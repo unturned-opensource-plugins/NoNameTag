@@ -1,0 +1,58 @@
+nul
+############################
+# Visual Studio
+############################
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+############################
+# Build outputs
+############################
+bin/
+obj/
+[Bb]uild/
+[Dd]ebug/
+[Rr]elease/
+
+############################
+# .NET / MSBuild
+############################
+*.AssemblyInfo.cs
+*.AssemblyInfoInputs.cache
+*.FileListAbsolute.txt
+*.csproj.CoreCompileInputs.cache
+*.csproj.nuget.dgspec.json
+*.csproj.nuget.g.props
+*.csproj.nuget.g.targets
+project.assets.json
+project.nuget.cache
+
+############################
+# Logs & reports
+############################
+*.log
+CLEANUP_REPORT.md
+
+############################
+# Visual Studio cache / temp
+############################
+*.cache
+*.tmp
+*.bak
+*.backup
+
+############################
+# OS files
+############################
+.DS_Store
+Thumbs.db
+
+############################
+# Rider / ReSharper（可选）
+############################
+.idea/
+_ReSharper*/
+*.DotSettings.user

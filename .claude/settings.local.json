@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(powershell -Command:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:docs.smartlydressedgames.com)",
+      "WebFetch(domain:rocketmod.net)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\NoNameTag\\\\Models\", \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\NoNameTag\\\\Services\", \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\NoNameTag\\\\Commands\")",
+      "Bash(dotnet build:*)",
+      "Bash(Remove-Item:*)",
+      "Bash(del \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\NoNameTag\\\\Commands\\\\CustomCommand.cs\")",
+      "Bash(del:*)",
+      "Bash(wc:*)"
+    ]
+  }
+}

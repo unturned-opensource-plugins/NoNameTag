@@ -1,0 +1,244 @@
+using Emqo.NoNameTag.Services;
+using Emqo.NoNameTag.Utilities;
+using Rocket.Core.Plugins;
+using Rocket.Unturned;
+using Rocket.Unturned.Events;
+using Rocket.Unturned.Player;
+using SDG.Unturned;
+using Steamworks;
+using System;
+using UnityEngine;
+using Logger = Emqo.NoNameTag.Utilities.PluginLogger;
+
+namespace Emqo.NoNameTag
+{
+    public class NoNameTagPlugin : RocketPlugin<NoNameTagConfiguration>
+    {
+        public static NoNameTagPlugin Instance { get; private set; }
+
+        public PermissionService PermissionService { get; private set; }
+        public NameTagManager NameTagManager { get; private set; }
+        public DeathMessageService DeathMessageService { get; private set; }
+        public NameTagDisplayService NameTagDisplayService { get; private set; }
+
+        protected override void Load()
+        {
+            Instance = this;
+            Logger.DebugEnabled = Configuration.Instance.DebugMode;
+
+            try
+            {
+                if (!ConfigValidator.ValidateConfiguration(Configuration.Instance, out var configError))
+                {
+                    Logger.Warning($"Configuration validation failed: {configError}");
+                }
+
+                InitializeServices();
+                RegisterEventHandlers();
+                RefreshAllDisplays();
+
+                Logger.Info($"{Name} {Assembly.GetName().Version.ToString(3)} has been loaded!");
+            }
+            catch (Exception ex)
+            {
+                Logger.Exception(ex, "Failed to load plugin");
+            }
+        }
+
+        protected override void Unload()
+        {
+            try
+            {
+                UnregisterEventHandlers();
+                NameTagDisplayService?.ClearAllNameTags();
+                Instance = null;
+                Logger.Info($"{Name} has been unloaded!");
+            }
+            catch (Exception ex)
+            {
+                Logger.Exception(ex, "Error during plugin unload");
+            }
+        }
+
+        private void RegisterEventHandlers()
+        {
+            U.Events.OnPlayerConnected += OnPlayerConnected;
+            U.Events.OnPlayerDisconnected += OnPlayerDisconnected;
+            UnturnedPlayerEvents.OnPlayerChatted += OnPlayerChatted;
+            PlayerLife.onPlayerDied += OnPlayerDied;
+        }
+
+        private void UnregisterEventHandlers()
+        {
+            U.Events.OnPlayerConnected -= OnPlayerConnected;
+            U.Events.OnPlayerDisconnected -= OnPlayerDisconnected;
+            UnturnedPlayerEvents.OnPlayerChatted -= OnPlayerChatted;
+            PlayerLife.onPlayerDied -= OnPlayerDied;
+        }
+
+        private void RefreshAllDisplays()
+        {
+            NameTagManager.RefreshAllPlayers();
+            if (Configuration.Instance.ApplyToNameTags)
+            {
+                NameTagDisplayService?.RefreshAllNameTags();
+            }
+        }
+
+        private void InitializeServices()
+        {
+            PermissionService = new PermissionService(Configuration.Instance);
+            NameTagManager = new NameTagManager(Configuration.Instance, PermissionService);
+
+            DeathMessageService = new DeathMessageService(Configuration.Instance, NameTagManager);
+            NameTagDisplayService = new NameTagDisplayService(Configuration.Instance, NameTagManager);
+
+            Logger.Debug("All services initialized");
+        }
+
+        public void ReloadServices()
+        {
+            try
+            {
+                Logger.DebugEnabled = Configuration.Instance.DebugMode;
+                InitializeServices();
+                RefreshAllDisplays();
+                Logger.Info("Services reloaded successfully");
+            }
+            catch (Exception ex)
+            {
+                Logger.Exception(ex, "Failed to reload services");
+            }
+        }
+
+        private void OnPlayerConnected(UnturnedPlayer player)
+        {
+            if (!IsValidPlayerConnection(player)) return;
+
+            try
+            {
+                ApplyPlayerEffects(player);
+                LogPlayerConnection(player);
+            }
+            catch (Exception ex)
+            {
+                Logger.Exception(ex, $"Error handling player connect: {player?.DisplayName}");
+            }
+        }
+
+        private bool IsValidPlayerConnection(UnturnedPlayer player)
+        {
+            return Configuration.Instance.Enabled
+                && player != null
+                && player.Player != null
+                && player.CSteamID != null;
+        }
+
+        private void ApplyPlayerEffects(UnturnedPlayer player)
+        {
+            NameTagManager.ApplyDisplayEffect(player);
+
+            if (Configuration.Instance.ApplyToNameTags)
+            {
+                StartCoroutine(DelayedApplyNameTag(player));
+            }
+        }
+
+        private void LogPlayerConnection(UnturnedPlayer player)
+        {
+            Logger.Debug($"Player connected: {player.DisplayName}");
+        }
+
+        private System.Collections.IEnumerator DelayedApplyNameTag(UnturnedPlayer player)
+        {
+            // 等待一帧，确保玩家完全初始化
+            yield return null;
+
+            // playerID 是 struct，不能判断 null，需要检查内部字段
+            if (player?.Player?.channel?.owner == null)
+                yield break;
+
+            // 检查 nickName 是否已初始化
+            var nickName = player.Player.channel.owner.playerID.nickName;
+            if (string.IsNullOrEmpty(nickName))
+                yield break;
+
+            NameTagDisplayService?.ApplyNameTag(player);
+        }
+
+        private void OnPlayerDisconnected(UnturnedPlayer player)
+        {
+            if (player == null) return;
+
+            try
+            {
+                CleanupPlayerData(player);
+                LogPlayerDisconnection(player);
+            }
+            catch (Exception ex)
+            {
+                Logger.Exception(ex, $"Error handling player disconnect: {player?.DisplayName}");
+            }
+        }
+
+        private void CleanupPlayerData(UnturnedPlayer player)
+        {
+            NameTagManager.RemoveDisplayEffect(player);
+            NameTagDisplayService?.RemoveNameTag(player);
+            PermissionService?.ClearPlayerCache(player.CSteamID.m_SteamID);
+        }
+
+        private void LogPlayerDisconnection(UnturnedPlayer player)
+        {
+            Logger.Debug($"Player disconnected: {player.DisplayName}");
+        }
+
+        private void OnPlayerChatted(UnturnedPlayer player, ref Color color, string message, EChatMode chatMode, ref bool cancel)
+        {
+            if (!IsValidChatMessage(player)) return;
+
+            try
+            {
+                var formattedMessage = BuildFormattedChatMessage(player, message);
+                if (string.IsNullOrEmpty(formattedMessage)) return;
+
+                cancel = true;
+                ChatManager.serverSendMessage(formattedMessage, Color.white, null, null, chatMode, null, true);
+            }
+            catch (Exception ex)
+            {
+                Logger.Exception(ex, $"Error handling chat message from {player?.DisplayName}");
+            }
+        }
+
+        private bool IsValidChatMessage(UnturnedPlayer player)
+        {
+            return Configuration.Instance.Enabled
+                && Configuration.Instance.ApplyToChatMessages
+                && player != null;
+        }
+
+        private string BuildFormattedChatMessage(UnturnedPlayer player, string message)
+        {
+            var group = NameTagManager.GetPlayerEffect(player.CSteamID.m_SteamID);
+            if (group?.DisplayEffect == null) return null;
+
+            var formattedName = NameFormatter.FormatColoredName(player.DisplayName, group.DisplayEffect);
+            return $"{formattedName}: {message}";
+        }
+
+        private void OnPlayerDied(PlayerLife sender, EDeathCause cause, ELimb limb, CSteamID instigator)
+        {
+            if (!Configuration.Instance.Enabled) return;
+
+            try
+            {
+                DeathMessageService?.HandlePlayerDeath(sender, cause, limb, instigator);
+            }
+            catch (Exception ex)
+            {
+                Logger.Exception(ex, "Error handling player death");
+            }
+        }
+    }
+}

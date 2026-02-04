@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  NoNameTag 插件配置文件
+
+  本配置文件用于控制 NoNameTag 插件的所有功能。
+  所有颜色值使用十六进制格式：#RRGGBB（例如：#FF0000 表示红色）
+
+  常用颜色参考：
+  - #FFFFFF 白色
+  - #000000 黑色
+  - #FF0000 红色
+  - #00FF00 绿色
+  - #0000FF 蓝色
+  - #FFFF00 黄色
+  - #FF00FF 紫红色
+  - #00FFFF 青色
+  - #FFD700 金色
+  - #FF4500 橙红色
+  - #00BFFF 深天蓝
+  - #32CD32 石灰绿
+  - #FF69B4 热粉红
+-->
+<Configuration>
+  <!--
+    启用/禁用插件
+    true: 插件启用，所有功能生效
+    false: 插件禁用，不处理任何事件
+  -->
+  <Enabled>true</Enabled>
+
+  <!--
+    调试模式
+    true: 启用调试日志，控制台会输出详细的调试信息
+    false: 禁用调试日志，只输出重要信息
+
+    建议在开发/测试时启用，生产环境禁用以减少日志输出
+  -->
+  <DebugMode>false</DebugMode>
+
+  <!--
+    默认名称颜色
+    当玩家没有权限组时使用此颜色显示名称
+    格式：#RRGGBB（十六进制颜色代码）
+  -->
+  <DefaultNameColor>#FFFFFF</DefaultNameColor>
+
+  <!--
+    是否在聊天消息中应用名称标签效果
+    true: 聊天消息中的玩家名称会显示前缀、后缀和颜色
+    false: 聊天消息中的玩家名称保持原样
+
+    示例：
+    启用时：[VIP] PlayerName *: 你好
+    禁用时：PlayerName: 你好
+  -->
+  <ApplyToChatMessages>true</ApplyToChatMessages>
+
+  <!--
+    是否在游戏内名称标签中应用效果
+    true: 玩家头顶的名称标签会显示前缀、后缀和颜色
+    false: 玩家头顶的名称标签保持原样
+  -->
+  <ApplyToNameTags>true</ApplyToNameTags>
+
+  <!--
+    权限组优先级模式
+
+    FirstMatch: 使用第一个匹配的权限组
+    - 按配置文件中的顺序检查权限
+    - 找到第一个玩家拥有的权限后立即使用
+    - 性能最优，但不支持多权限优先级
+
+    HighestPriority: 使用优先级最高的权限组
+    - 检查玩家拥有的所有权限
+    - 选择优先级数值最大的权限组
+    - 支持多权限优先级，但性能略低
+
+    推荐使用 HighestPriority，这样可以灵活配置多个权限组
+  -->
+  <PriorityMode>HighestPriority</PriorityMode>
+
+  <!--
+    权限组配置
+
+    每个权限组定义一个权限对应的显示效果
+    玩家拥有权限时，会应用对应的显示效果
+
+    属性说明：
+    - permission: 权限字符串（必须与权限系统中的权限名称一致）
+    - priority: 优先级数值（0-1000，数值越大优先级越高）
+
+    DisplayEffect 子元素：
+    - Prefix: 名称前缀（显示在名称前面）
+    - PrefixColor: 前缀颜色（#RRGGBB 格式）
+    - NameColor: 名称颜色（#RRGGBB 格式）
+    - Suffix: 名称后缀（显示在名称后面）
+    - SuffixColor: 后缀颜色（#RRGGBB 格式）
+  -->
+  <PermissionGroups>
+    <!-- VIP 权限组示例 -->
+    <PermissionGroup permission="nonametag.vip" priority="10">
+      <DisplayEffect>
+        <Prefix>[VIP] </Prefix>
+        <PrefixColor>#FFD700</PrefixColor>
+        <NameColor>#00FF00</NameColor>
+        <Suffix></Suffix>
+        <SuffixColor>#FFFFFF</SuffixColor>
+      </DisplayEffect>
+    </PermissionGroup>
+
+    <!-- MVP 权限组示例（优先级更高） -->
+    <PermissionGroup permission="nonametag.mvp" priority="20">
+      <DisplayEffect>
+        <Prefix>[MVP] </Prefix>
+        <PrefixColor>#FF4500</PrefixColor>
+        <NameColor>#00BFFF</NameColor>
+        <Suffix> *</Suffix>
+        <SuffixColor>#FF4500</SuffixColor>
+      </DisplayEffect>
+    </PermissionGroup>
+
+    <!--
+      管理员权限组示例（最高优先级）
+
+      如果需要添加更多权限组，复制下面的模板：
+
+      <PermissionGroup permission="nonametag.admin" priority="100">
+        <DisplayEffect>
+          <Prefix>[ADMIN] </Prefix>
+          <PrefixColor>#FF0000</PrefixColor>
+          <NameColor>#FF0000</NameColor>
+          <Suffix> ⚔</Suffix>
+          <SuffixColor>#FF0000</SuffixColor>
+        </DisplayEffect>
+      </PermissionGroup>
+    -->
+  </PermissionGroups>
+
+  <!--
+    死亡消息配置
+
+    控制玩家死亡时的消息显示
+    支持多种死亡原因的自定义消息
+
+    占位符说明：
+    - {killer}: 击杀者名称（带颜色效果）
+    - {victim}: 死亡者名称（带颜色效果）
+  -->
+  <DeathMessage>
+    <!-- 是否启用自定义死亡消息 -->
+    <Enabled>true</Enabled>
+
+    <!-- 玩家被击杀时的消息格式 -->
+    <Format>{killer} 击杀了 {victim}</Format>
+
+    <!-- 玩家自杀时的消息格式 -->
+    <SelfKillFormat>{victim} 自杀了</SelfKillFormat>
+
+    <!-- 玩家因流血死亡 -->
+    <BleedingFormat>{victim} 流血致死</BleedingFormat>
+
+    <!-- 玩家被僵尸击杀 -->
+    <ZombieFormat>{victim} 被僵尸击杀</ZombieFormat>
+
+    <!-- 玩家被动物击杀 -->
+    <AnimalFormat>{victim} 被动物击杀</AnimalFormat>
+
+    <!-- 玩家死于车祸 -->
+    <VehicleFormat>{victim} 死于车祸</VehicleFormat>
+
+    <!-- 玩家摔死 -->
+    <FallFormat>{victim} 摔死了</FallFormat>
+
+    <!-- 玩家淹死 -->
+    <DrownFormat>{victim} 淹死了</DrownFormat>
+
+    <!-- 玩家冻死 -->
+    <FreezeFormat>{victim} 冻死了</FreezeFormat>
+
+    <!-- 玩家被烧死 -->
+    <BurnFormat>{victim} 被烧死了</BurnFormat>
+
+    <!-- 玩家饿死 -->
+    <FoodFormat>{victim} 饿死了</FoodFormat>
+
+    <!-- 玩家渴死 -->
+    <WaterFormat>{victim} 渴死了</WaterFormat>
+
+    <!-- 玩家感染致死 -->
+    <InfectionFormat>{victim} 感染致死</InfectionFormat>
+
+    <!-- 其他死亡原因的默认消息 -->
+    <DefaultFormat>{victim} 死亡了</DefaultFormat>
+  </DeathMessage>
+</Configuration>
