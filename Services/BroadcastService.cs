@@ -81,13 +81,42 @@ namespace Emqo.NoNameTag.Services
 
             try
             {
+                if (sender == null || sender.player == null)
+                    return;
+
                 var victim = UnturnedPlayer.FromPlayer(sender.player);
                 if (victim == null) return;
 
                 UnturnedPlayer killer = null;
+
+                // 尝试从 instigator 获取 killer
                 if (instigator != CSteamID.Nil && instigator.m_SteamID != 0)
                 {
-                    killer = UnturnedPlayer.FromCSteamID(instigator);
+                    try
+                    {
+                        killer = UnturnedPlayer.FromCSteamID(instigator);
+                        // 如果 killer 为 null 或者是受害者自己，则认为是环境死亡
+                        if (killer != null)
+                        {
+                            try
+                            {
+                                if (killer.CSteamID.m_SteamID == victim.CSteamID.m_SteamID)
+                                {
+                                    killer = null;
+                                }
+                            }
+                            catch
+                            {
+                                // 如果无法比较 SteamID，则认为 killer 无效
+                                killer = null;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // 如果无法获取 killer，则认为是环境死亡
+                        killer = null;
+                    }
                 }
 
                 var message = FormatDeathMessage(victim, killer, cause);
@@ -107,36 +136,65 @@ namespace Emqo.NoNameTag.Services
         /// </summary>
         private string FormatDeathMessage(UnturnedPlayer victim, UnturnedPlayer killer, EDeathCause cause)
         {
-            var deathConfig = _config.Broadcast.DeathMessage;
-            string format;
+            // 添加 null 检查
+            if (victim == null)
+                return null;
 
-            bool isSelfKill = killer != null && killer.CSteamID == victim.CSteamID;
-            bool isPlayerKill = killer != null && !isSelfKill;
-
-            if (isSelfKill)
+            try
             {
-                format = deathConfig.SelfKillFormat;
+                var deathConfig = _config.Broadcast.DeathMessage;
+                if (deathConfig == null)
+                    return null;
+
+                string format;
+
+                // 安全地检查 killer
+                bool isSelfKill = false;
+                bool isPlayerKill = false;
+
+                if (killer != null)
+                {
+                    try
+                    {
+                        isSelfKill = killer.CSteamID == victim.CSteamID;
+                        isPlayerKill = !isSelfKill;
+                    }
+                    catch
+                    {
+                        isPlayerKill = true;
+                    }
+                }
+
+                if (isSelfKill)
+                {
+                    format = deathConfig.SelfKillFormat;
+                }
+                else if (isPlayerKill)
+                {
+                    format = deathConfig.Format;
+                }
+                else
+                {
+                    format = GetFormatByCause(cause, deathConfig);
+                }
+
+                var victimName = FormatPlayerName(victim);
+                var killerName = killer != null ? FormatPlayerName(killer) : "";
+
+                // 使用 StringBuilder 优化字符串替换
+                var replacements = new Dictionary<string, string>
+                {
+                    { "{victim}", victimName },
+                    { "{killer}", killerName }
+                };
+
+                return ReplaceMultiple(format, replacements);
             }
-            else if (isPlayerKill)
+            catch (Exception ex)
             {
-                format = deathConfig.Format;
+                Logger.Exception(ex, "Error in FormatDeathMessage", LogCategory.DeathMessage);
+                return null;
             }
-            else
-            {
-                format = GetFormatByCause(cause, deathConfig);
-            }
-
-            var victimName = FormatPlayerName(victim);
-            var killerName = killer != null ? FormatPlayerName(killer) : "";
-
-            // 使用 StringBuilder 优化字符串替换
-            var replacements = new Dictionary<string, string>
-            {
-                { "{victim}", victimName },
-                { "{killer}", killerName }
-            };
-
-            return ReplaceMultiple(format, replacements);
         }
 
         /// <summary>
@@ -195,10 +253,53 @@ namespace Emqo.NoNameTag.Services
         /// </summary>
         private string FormatPlayerName(UnturnedPlayer player)
         {
-            var group = _nameTagManager.GetPlayerEffect(player.CSteamID.m_SteamID);
-            return group?.DisplayEffect != null
-                ? NameFormatter.FormatColoredName(player.DisplayName, group.DisplayEffect)
-                : player.DisplayName;
+            if (player == null)
+                return "Unknown";
+
+            try
+            {
+                // 尝试获取玩家名称，如果失败则使用备用名称
+                string playerName = "Unknown";
+                try
+                {
+                    playerName = player.DisplayName ?? player.CharacterName ?? "Unknown";
+                }
+                catch
+                {
+                    // 如果 DisplayName 失败，尝试直接访问 Player 对象
+                    try
+                    {
+                        if (player.Player != null && player.Player.channel != null)
+                        {
+                            playerName = player.Player.channel.owner.playerID.characterName ?? "Unknown";
+                        }
+                    }
+                    catch
+                    {
+                        playerName = "Unknown";
+                    }
+                }
+
+                // 尝试获取权限组效果
+                try
+                {
+                    var group = _nameTagManager.GetPlayerEffect(player.CSteamID.m_SteamID);
+                    if (group?.DisplayEffect != null)
+                    {
+                        return NameFormatter.FormatColoredName(playerName, group.DisplayEffect);
+                    }
+                }
+                catch
+                {
+                    // 忽略权限组获取错误
+                }
+
+                return playerName;
+            }
+            catch
+            {
+                return "Unknown";
+            }
         }
 
         /// <summary>

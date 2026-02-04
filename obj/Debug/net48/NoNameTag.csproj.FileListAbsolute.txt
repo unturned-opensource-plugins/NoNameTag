@@ -1,10 +1,10 @@
+C:\Users\Administrator\Desktop\NoNameTag\bin\Debug\net48\NoNameTag.dll
+C:\Users\Administrator\Desktop\NoNameTag\bin\Debug\net48\NoNameTag.pdb
 C:\Users\Administrator\Desktop\NoNameTag\obj\Debug\net48\NoNameTag.csproj.AssemblyReference.cache
 C:\Users\Administrator\Desktop\NoNameTag\obj\Debug\net48\NoNameTag.GeneratedMSBuildEditorConfig.editorconfig
 C:\Users\Administrator\Desktop\NoNameTag\obj\Debug\net48\NoNameTag.AssemblyInfoInputs.cache
 C:\Users\Administrator\Desktop\NoNameTag\obj\Debug\net48\NoNameTag.AssemblyInfo.cs
 C:\Users\Administrator\Desktop\NoNameTag\obj\Debug\net48\NoNameTag.csproj.CoreCompileInputs.cache
-C:\Users\Administrator\Desktop\NoNameTag\bin\Debug\net48\NoNameTag.dll
-C:\Users\Administrator\Desktop\NoNameTag\bin\Debug\net48\NoNameTag.pdb
+C:\Users\Administrator\Desktop\NoNameTag\obj\Debug\net48\NoNameTag.sourcelink.json
 C:\Users\Administrator\Desktop\NoNameTag\obj\Debug\net48\NoNameTag.dll
 C:\Users\Administrator\Desktop\NoNameTag\obj\Debug\net48\NoNameTag.pdb
-C:\Users\Administrator\Desktop\NoNameTag\obj\Debug\net48\NoNameTag.sourcelink.json

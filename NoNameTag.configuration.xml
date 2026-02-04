@@ -80,6 +80,18 @@
   <PriorityMode>HighestPriority</PriorityMode>
 
   <!--
+    头像设置
+
+    控制聊天消息和公告中的头像显示
+  -->
+  <AvatarSettings>
+    <!-- 是否启用头像功能 -->
+    <Enabled>true</Enabled>
+    <!-- 聊天消息头像大小（像素） -->
+    <ChatAvatarSize>16</ChatAvatarSize>
+  </AvatarSettings>
+
+  <!--
     权限组配置
 
     每个权限组定义一个权限对应的显示效果
@@ -192,4 +204,77 @@
     <!-- 其他死亡原因的默认消息 -->
     <DefaultFormat>{victim} 死亡了</DefaultFormat>
   </DeathMessage>
+
+  <!--
+    广播组配置
+
+    用于定期向所有玩家发送公告消息
+    支持多个广播组，每个组独立轮播
+
+    属性说明：
+    - name: 广播组名称（唯一标识）
+    - enabled: 是否启用此广播组
+    - RotationInterval: 轮播间隔（秒）
+    - Messages: 消息列表
+      - Message: 消息内容
+      - DelaySeconds: 延迟时间（秒）
+      - Avatar: 头像（支持 {server_icon} 变量或 Emoji）
+      - AvatarPosition: 头像位置（Left 或 Right）
+
+    变量支持：
+    - {server_icon}: 服务器图标 URL
+    - {server_thumbnail}: 服务器缩略图 URL
+    - {server_name}: 服务器名称
+    - {server_players}: 在线玩家数
+    - {server_maxplayers}: 最大玩家数
+    - {server_map}: 地图名称
+    - {server_mode}: 服务器模式
+  -->
+  <BroadcastGroups>
+    <!-- 服务器规则公告 -->
+    <BroadcastGroup name="server_rules" enabled="true">
+      <RotationInterval>120</RotationInterval>
+      <Messages>
+        <Message>
+          <Message>欢迎来到服务器！请遵守规则。</Message>
+          <DelaySeconds>0</DelaySeconds>
+          <Avatar>{server_icon}</Avatar>
+          <AvatarPosition>Left</AvatarPosition>
+        </Message>
+        <Message>
+          <Message>使用 /help 查看可用命令。</Message>
+          <DelaySeconds>0</DelaySeconds>
+          <Avatar>{server_icon}</Avatar>
+          <AvatarPosition>Left</AvatarPosition>
+        </Message>
+        <Message>
+          <Message>禁止恶意破坏和骚扰其他玩家。</Message>
+          <DelaySeconds>0</DelaySeconds>
+          <Avatar>{server_icon}</Avatar>
+          <AvatarPosition>Left</AvatarPosition>
+        </Message>
+      </Messages>
+    </BroadcastGroup>
+
+    <!-- VIP 公告（可选） -->
+    <!--
+    <BroadcastGroup name="vip_announcements" enabled="false">
+      <RotationInterval>180</RotationInterval>
+      <Messages>
+        <Message>
+          <Message>VIP 玩家专属福利：每日登录获得奖励！</Message>
+          <DelaySeconds>0</DelaySeconds>
+          <Avatar>⭐</Avatar>
+          <AvatarPosition>Left</AvatarPosition>
+        </Message>
+        <Message>
+          <Message>VIP 玩家可使用特殊前缀和颜色。</Message>
+          <DelaySeconds>0</DelaySeconds>
+          <Avatar>👑</Avatar>
+          <AvatarPosition>Left</AvatarPosition>
+        </Message>
+      </Messages>
+    </BroadcastGroup>
+    -->
+  </BroadcastGroups>
 </Configuration>

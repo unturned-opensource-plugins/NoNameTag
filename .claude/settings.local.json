@@ -19,7 +19,8 @@
       "Bash(find:*)",
       "Bash(dotnet tool list:*)",
       "Bash(dotnet tool install:*)",
-      "Bash(\"C:\\\\Users\\\\Administrator\\\\.dotnet\\\\tools\\\\ilspycmd.exe\":*)"
+      "Bash(\"C:\\\\Users\\\\Administrator\\\\.dotnet\\\\tools\\\\ilspycmd.exe\":*)",
+      "Bash(dotnet clean:*)"
     ]
   }
 }
