@@ -8,6 +8,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="lib\**" />
+    <Compile Remove="RichMessageAnnouncer-master\**" />
+    <Compile Remove="参考插件\**" />
+    <EmbeddedResource Remove="lib\**" />
+    <EmbeddedResource Remove="RichMessageAnnouncer-master\**" />
+    <EmbeddedResource Remove="参考插件\**" />
+    <None Remove="lib\**" />
+    <None Remove="RichMessageAnnouncer-master\**" />
+    <None Remove="参考插件\**" />
+  </ItemGroup>
+
+  <ItemGroup>
 	  <PackageReference Include="RestoreMonarchy.RocketRedist" Version="3.*" ExcludeAssets="runtime" />
   </ItemGroup>
 

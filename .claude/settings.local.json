@@ -14,7 +14,12 @@
       "Bash(del \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\NoNameTag\\\\Commands\\\\CustomCommand.cs\")",
       "Bash(del:*)",
       "Bash(wc:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(dotnet tool list:*)",
+      "Bash(dotnet tool install:*)",
+      "Bash(\"C:\\\\Users\\\\Administrator\\\\.dotnet\\\\tools\\\\ilspycmd.exe\":*)"
     ]
   }
 }

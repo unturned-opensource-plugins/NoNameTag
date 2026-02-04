@@ -7,6 +7,13 @@
   <ApplyToNameTags>true</ApplyToNameTags>
   <PriorityMode>HighestPriority</PriorityMode>
 
+  <!-- 头像设置（新增功能） -->
+  <AvatarSettings>
+    <Enabled>true</Enabled>
+    <ChatAvatarSize>16</ChatAvatarSize>
+    <DefaultChatAvatar>👤</DefaultChatAvatar>
+  </AvatarSettings>
+
   <!-- 权限组配置（原有功能） -->
   <PermissionGroups>
     <PermissionGroup permission="nonametag.vip" priority="10">
@@ -52,26 +59,26 @@
 
   <!-- 广播组配置（新增功能，仅支持全员可见） -->
   <BroadcastGroups>
-    <!-- 公告组1：服务器规则 -->
+    <!-- 公告组1：服务器规则（带 Emoji 头像） -->
     <BroadcastGroup name="server_rules" enabled="true">
       <RotationInterval>120</RotationInterval>
       <Messages>
-        <Message>欢迎来到服务器！请遵守规则。</Message>
-        <Message>使用 /help 查看可用命令。</Message>
-        <Message>禁止恶意破坏和骚扰其他玩家。</Message>
+        <Message avatar="🛡️" avatarPosition="Left">欢迎来到服务器！请遵守规则。</Message>
+        <Message avatar="❓" avatarPosition="Left">使用 /help 查看可用命令。</Message>
+        <Message avatar="🚫" avatarPosition="Left">禁止恶意破坏和骚扰其他玩家。</Message>
       </Messages>
     </BroadcastGroup>
 
-    <!-- 公告组2：VIP专属公告 -->
+    <!-- 公告组2：VIP 公告（带 Sprite 头像） -->
     <BroadcastGroup name="vip_announcements" enabled="true">
       <RotationInterval>180</RotationInterval>
       <Messages>
-        <Message>VIP玩家专属福利：每日登录获得奖励！</Message>
-        <Message>VIP玩家可使用特殊前缀和颜色。</Message>
+        <Message avatar="icon_vip" avatarPosition="Left">VIP玩家专属福利：每日登录获得奖励！</Message>
+        <Message avatar="icon_vip" avatarPosition="Left">VIP玩家可使用特殊前缀和颜色。</Message>
       </Messages>
     </BroadcastGroup>
 
-    <!-- 公告组3：死亡提示（禁用状态） -->
+    <!-- 公告组3：无头像公告 -->
     <BroadcastGroup name="death_tips" enabled="false">
       <RotationInterval>300</RotationInterval>
       <Messages>

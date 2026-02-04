@@ -25,6 +25,9 @@ namespace Emqo.NoNameTag
 
         public PriorityMode PriorityMode { get; set; } = PriorityMode.HighestPriority;
 
+        [XmlElement("AvatarSettings")]
+        public AvatarConfig AvatarSettings { get; set; } = new AvatarConfig();
+
         [XmlArray("PermissionGroups")]
         [XmlArrayItem("PermissionGroup")]
         public List<PermissionGroupConfig> PermissionGroups { get; set; } = new List<PermissionGroupConfig>();
@@ -60,6 +63,8 @@ namespace Emqo.NoNameTag
             ApplyToChatMessages = true;
             ApplyToNameTags = true;
             PriorityMode = PriorityMode.HighestPriority;
+
+            AvatarSettings = new AvatarConfig();
 
             PermissionGroups = new List<PermissionGroupConfig>
             {

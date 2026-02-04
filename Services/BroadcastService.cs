@@ -344,6 +344,18 @@ namespace Emqo.NoNameTag.Services
                     // 准备消息文本
                     var messageText = message.Message;
 
+                    // 替换消息中的变量并转换富文本格式
+                    messageText = ReplaceVariables(messageText);
+                    messageText = messageText.Replace("{", "<").Replace("}", ">");
+
+                    // 准备头像 URL
+                    string avatarUrl = message.Avatar;
+                    if (!string.IsNullOrEmpty(avatarUrl))
+                    {
+                        // 替换头像 URL 中的变量
+                        avatarUrl = ReplaceVariables(avatarUrl);
+                    }
+
                     // 发送到主线程执行
                     UnityMainThreadDispatcher.Instance().Enqueue(() =>
                     {
@@ -355,7 +367,7 @@ namespace Emqo.NoNameTag.Services
                                 null,
                                 null,
                                 EChatMode.GLOBAL,
-                                null,
+                                avatarUrl,
                                 true
                             );
 
@@ -448,6 +460,25 @@ namespace Emqo.NoNameTag.Services
             }
 
             return status;
+        }
+
+        /// <summary>
+        /// 替换变量（如 {server_icon}）
+        /// </summary>
+        private string ReplaceVariables(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+
+            text = text.Replace("{server_icon}", Provider.configData.Browser.Icon);
+            text = text.Replace("{server_thumbnail}", Provider.configData.Browser.Thumbnail);
+            text = text.Replace("{server_name}", Provider.serverName);
+            text = text.Replace("{server_players}", Provider.clients.Count.ToString("N0"));
+            text = text.Replace("{server_maxplayers}", Provider.maxPlayers.ToString("N0"));
+            text = text.Replace("{server_map}", Level.info?.name ?? string.Empty);
+            text = text.Replace("{server_mode}", Provider.mode.ToString());
+
+            return text;
         }
 
         /// <summary>

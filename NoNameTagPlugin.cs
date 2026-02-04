@@ -1,3 +1,4 @@
+using Emqo.NoNameTag.Models;
 using Emqo.NoNameTag.Services;
 using Emqo.NoNameTag.Utilities;
 using Rocket.Core.Plugins;
@@ -203,11 +204,13 @@ namespace Emqo.NoNameTag
 
             try
             {
-                var formattedMessage = BuildFormattedChatMessage(player, message);
+                var (formattedMessage, avatarUrl) = BuildFormattedChatMessage(player, message);
                 if (string.IsNullOrEmpty(formattedMessage)) return;
 
                 cancel = true;
-                ChatManager.serverSendMessage(formattedMessage, Color.white, null, null, chatMode, null, true);
+                Logger.Debug($"Chat message - Player: {player.DisplayName}, SteamID: {player.CSteamID.m_SteamID}, AvatarUrl: {avatarUrl ?? "null"}, Message: {formattedMessage}", LogCategory.Plugin);
+                // 参数顺序：message, color, fromPlayer, toPlayer, chatMode, iconUrl, useRichText
+                ChatManager.serverSendMessage(formattedMessage, Color.white, player.SteamPlayer(), null, chatMode, avatarUrl, true);
             }
             catch (Exception ex)
             {
@@ -222,13 +225,27 @@ namespace Emqo.NoNameTag
                 && player != null;
         }
 
-        private string BuildFormattedChatMessage(UnturnedPlayer player, string message)
+        private (string message, string avatarUrl) BuildFormattedChatMessage(UnturnedPlayer player, string message)
         {
             var group = NameTagManager.GetPlayerEffect(player.CSteamID.m_SteamID);
-            if (group?.DisplayEffect == null) return null;
+            if (group?.DisplayEffect == null) return (null, null);
 
-            var formattedName = NameFormatter.FormatColoredName(player.DisplayName, group.DisplayEffect);
-            return $"{formattedName}: {message}";
+            var formattedName = NameFormatter.FormatNameWithAvatar(
+                player.DisplayName,
+                group.DisplayEffect,
+                AvatarPosition.Left
+            );
+
+            // 不设置 iconUrl，让 Unturned 自动显示玩家的 Steam 头像
+            string avatarUrl = null;
+
+            // 构建最终消息
+            string finalMessage = $"{formattedName}: {message}";
+
+            // 转换富文本格式：{ 和 } 转换为 < 和 >
+            finalMessage = finalMessage.Replace("{", "<").Replace("}", ">");
+
+            return (finalMessage, avatarUrl);
         }
 
         private void OnPlayerDied(PlayerLife sender, EDeathCause cause, ELimb limb, CSteamID instigator)

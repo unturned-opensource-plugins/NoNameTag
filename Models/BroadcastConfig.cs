@@ -30,6 +30,22 @@ namespace Emqo.NoNameTag.Models
     }
 
     /// <summary>
+    /// 头像位置枚举
+    /// </summary>
+    public enum AvatarPosition
+    {
+        /// <summary>
+        /// 头像在左侧
+        /// </summary>
+        Left,
+
+        /// <summary>
+        /// 头像在右侧
+        /// </summary>
+        Right
+    }
+
+    /// <summary>
     /// 广播消息配置
     /// </summary>
     public class BroadcastMessage
@@ -40,14 +56,28 @@ namespace Emqo.NoNameTag.Models
         [XmlElement("DelaySeconds")]
         public int DelaySeconds { get; set; } = 0;
 
+        /// <summary>
+        /// 头像：Sprite ID（如 "icon_vip"）或 Emoji（如 "🛡️"）
+        /// </summary>
+        [XmlElement("Avatar")]
+        public string Avatar { get; set; } = "";
+
+        /// <summary>
+        /// 头像位置：Left 或 Right
+        /// </summary>
+        [XmlElement("AvatarPosition")]
+        public AvatarPosition AvatarPosition { get; set; } = AvatarPosition.Left;
+
         public BroadcastMessage()
         {
         }
 
-        public BroadcastMessage(string message, int delaySeconds = 0)
+        public BroadcastMessage(string message, int delaySeconds = 0, string avatar = "", AvatarPosition position = AvatarPosition.Left)
         {
             Message = message;
             DelaySeconds = delaySeconds;
+            Avatar = avatar;
+            AvatarPosition = position;
         }
     }
 
