@@ -27,10 +27,14 @@ namespace Emqo.NoNameTag.Services
             try
             {
                 var internalPlayer = player.Player;
-                if (internalPlayer?.channel?.owner?.playerID == null) return;
+                if (internalPlayer?.channel?.owner == null) return;
 
+                // playerID 是 struct，不能为 null，但需要检查 steamID 是否有效
                 var steamId = internalPlayer.channel.owner.playerID.steamID.m_SteamID;
+                if (steamId == 0) return;
+
                 var displayName = internalPlayer.channel.owner.playerID.characterName;
+                if (string.IsNullOrEmpty(displayName)) return;
 
                 if (!_originalNicknames.ContainsKey(steamId))
                 {
@@ -38,7 +42,7 @@ namespace Emqo.NoNameTag.Services
                 }
 
                 var group = _nameTagManager.GetPlayerEffect(steamId);
-                if (group?.DisplayEffect == null) return;
+                if (group == null || group.DisplayEffect == null) return;
 
                 var formattedName = NameFormatter.FormatColoredName(displayName, group.DisplayEffect);
                 internalPlayer.channel.owner.playerID.nickName = formattedName;

@@ -32,6 +32,26 @@ namespace Emqo.NoNameTag
         [XmlElement("DeathMessage")]
         public DeathMessageConfig DeathMessage { get; set; } = new DeathMessageConfig();
 
+        [XmlArray("BroadcastGroups")]
+        [XmlArrayItem("BroadcastGroup")]
+        public List<BroadcastGroupConfig> BroadcastGroups { get; set; } = new List<BroadcastGroupConfig>();
+
+        /// <summary>
+        /// 统一的广播配置（用于 BroadcastService）
+        /// </summary>
+        [XmlIgnore]
+        public BroadcastConfig Broadcast
+        {
+            get
+            {
+                return new BroadcastConfig
+                {
+                    DeathMessage = DeathMessage,
+                    BroadcastGroups = BroadcastGroups
+                };
+            }
+        }
+
         public void LoadDefaults()
         {
             Enabled = true;
@@ -56,6 +76,22 @@ namespace Emqo.NoNameTag
             };
 
             DeathMessage = new DeathMessageConfig();
+
+            BroadcastGroups = new List<BroadcastGroupConfig>
+            {
+                new BroadcastGroupConfig
+                {
+                    Name = "server_rules",
+                    Enabled = true,
+                    RotationInterval = 120,
+                    Messages = new List<BroadcastMessage>
+                    {
+                        new BroadcastMessage("欢迎来到服务器！请遵守规则。", 0),
+                        new BroadcastMessage("使用 /help 查看可用命令。", 0),
+                        new BroadcastMessage("禁止恶意破坏和骚扰其他玩家。", 0)
+                    }
+                }
+            };
         }
     }
 }

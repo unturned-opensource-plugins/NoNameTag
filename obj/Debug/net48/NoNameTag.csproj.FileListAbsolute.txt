@@ -7,3 +7,4 @@ C:\Users\Administrator\Desktop\NoNameTag\bin\Debug\net48\NoNameTag.dll
 C:\Users\Administrator\Desktop\NoNameTag\bin\Debug\net48\NoNameTag.pdb
 C:\Users\Administrator\Desktop\NoNameTag\obj\Debug\net48\NoNameTag.dll
 C:\Users\Administrator\Desktop\NoNameTag\obj\Debug\net48\NoNameTag.pdb
+C:\Users\Administrator\Desktop\NoNameTag\obj\Debug\net48\NoNameTag.sourcelink.json

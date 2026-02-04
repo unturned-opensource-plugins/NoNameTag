@@ -13,7 +13,8 @@
       "Bash(Remove-Item:*)",
       "Bash(del \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\NoNameTag\\\\Commands\\\\CustomCommand.cs\")",
       "Bash(del:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(findstr:*)"
     ]
   }
 }

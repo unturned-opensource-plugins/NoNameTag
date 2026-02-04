@@ -147,6 +147,75 @@ namespace Emqo.NoNameTag.Utilities
                 }
             }
 
+            if (config.BroadcastGroups != null)
+            {
+                for (int i = 0; i < config.BroadcastGroups.Count; i++)
+                {
+                    if (!ValidateBroadcastGroup(config.BroadcastGroups[i], out error))
+                    {
+                        error = $"BroadcastGroup[{i}]: {error}";
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 验证广播组配置
+        /// </summary>
+        public static bool ValidateBroadcastGroup(BroadcastGroupConfig group, out string error)
+        {
+            error = null;
+
+            if (group == null)
+            {
+                error = "BroadcastGroup cannot be null";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(group.Name))
+            {
+                error = "BroadcastGroup name cannot be empty";
+                return false;
+            }
+
+            if (group.RotationInterval <= 0)
+            {
+                error = $"RotationInterval must be greater than 0. Current: {group.RotationInterval}";
+                return false;
+            }
+
+            if (group.Messages == null || group.Messages.Count == 0)
+            {
+                error = $"BroadcastGroup '{group.Name}' must have at least one message";
+                return false;
+            }
+
+            // 验证每条消息
+            for (int i = 0; i < group.Messages.Count; i++)
+            {
+                var message = group.Messages[i];
+                if (message == null)
+                {
+                    error = $"BroadcastGroup '{group.Name}' message[{i}] cannot be null";
+                    return false;
+                }
+
+                if (string.IsNullOrWhiteSpace(message.Message))
+                {
+                    error = $"BroadcastGroup '{group.Name}' message[{i}] cannot be empty";
+                    return false;
+                }
+
+                if (message.DelaySeconds < 0)
+                {
+                    error = $"BroadcastGroup '{group.Name}' message[{i}] DelaySeconds cannot be negative";
+                    return false;
+                }
+            }
+
             return true;
         }
     }

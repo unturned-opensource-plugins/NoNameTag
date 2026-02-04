@@ -18,7 +18,7 @@ namespace Emqo.NoNameTag
 
         public PermissionService PermissionService { get; private set; }
         public NameTagManager NameTagManager { get; private set; }
-        public DeathMessageService DeathMessageService { get; private set; }
+        public BroadcastService BroadcastService { get; private set; }
         public NameTagDisplayService NameTagDisplayService { get; private set; }
 
         protected override void Load()
@@ -36,6 +36,7 @@ namespace Emqo.NoNameTag
                 InitializeServices();
                 RegisterEventHandlers();
                 RefreshAllDisplays();
+                BroadcastService?.StartAllBroadcasts();
 
                 Logger.Info($"{Name} {Assembly.GetName().Version.ToString(3)} has been loaded!");
             }
@@ -50,6 +51,7 @@ namespace Emqo.NoNameTag
             try
             {
                 UnregisterEventHandlers();
+                BroadcastService?.StopAllBroadcasts();
                 NameTagDisplayService?.ClearAllNameTags();
                 Instance = null;
                 Logger.Info($"{Name} has been unloaded!");
@@ -90,7 +92,7 @@ namespace Emqo.NoNameTag
             PermissionService = new PermissionService(Configuration.Instance);
             NameTagManager = new NameTagManager(Configuration.Instance, PermissionService);
 
-            DeathMessageService = new DeathMessageService(Configuration.Instance, NameTagManager);
+            BroadcastService = new BroadcastService(Configuration.Instance, NameTagManager);
             NameTagDisplayService = new NameTagDisplayService(Configuration.Instance, NameTagManager);
 
             Logger.Debug("All services initialized");
@@ -101,8 +103,10 @@ namespace Emqo.NoNameTag
             try
             {
                 Logger.DebugEnabled = Configuration.Instance.DebugMode;
+                BroadcastService?.StopAllBroadcasts();
                 InitializeServices();
                 RefreshAllDisplays();
+                BroadcastService?.StartAllBroadcasts();
                 Logger.Info("Services reloaded successfully");
             }
             catch (Exception ex)
@@ -233,7 +237,7 @@ namespace Emqo.NoNameTag
 
             try
             {
-                DeathMessageService?.HandlePlayerDeath(sender, cause, limb, instigator);
+                BroadcastService?.HandlePlayerDeath(sender, cause, limb, instigator);
             }
             catch (Exception ex)
             {

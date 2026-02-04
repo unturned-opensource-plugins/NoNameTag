@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<NoNameTagConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Enabled>true</Enabled>
+  <DebugMode>false</DebugMode>
+  <DefaultNameColor>#FFFFFF</DefaultNameColor>
+  <ApplyToChatMessages>true</ApplyToChatMessages>
+  <ApplyToNameTags>true</ApplyToNameTags>
+  <PriorityMode>HighestPriority</PriorityMode>
+
+  <!-- 权限组配置（原有功能） -->
+  <PermissionGroups>
+    <PermissionGroup permission="nonametag.vip" priority="10">
+      <DisplayEffect>
+        <Prefix>[VIP] </Prefix>
+        <PrefixColor>#FFD700</PrefixColor>
+        <NameColor>#00FF00</NameColor>
+        <Suffix></Suffix>
+        <SuffixColor>#FFFFFF</SuffixColor>
+      </DisplayEffect>
+    </PermissionGroup>
+    <PermissionGroup permission="nonametag.mvp" priority="20">
+      <DisplayEffect>
+        <Prefix>[MVP] </Prefix>
+        <PrefixColor>#FF4500</PrefixColor>
+        <NameColor>#00BFFF</NameColor>
+        <Suffix> *</Suffix>
+        <SuffixColor>#FF4500</SuffixColor>
+      </DisplayEffect>
+    </PermissionGroup>
+  </PermissionGroups>
+
+  <!-- 死亡消息配置（增强版，支持可见性控制） -->
+  <DeathMessage>
+    <Enabled>true</Enabled>
+    <!-- 可见性控制：All, KillerOnly, VictimOnly, KillerAndVictimOnly -->
+    <Visibility>All</Visibility>
+    <Format>{killer} 击杀了 {victim}</Format>
+    <SelfKillFormat>{victim} 自杀了</SelfKillFormat>
+    <BleedingFormat>{victim} 流血致死</BleedingFormat>
+    <ZombieFormat>{victim} 被僵尸击杀</ZombieFormat>
+    <AnimalFormat>{victim} 被动物击杀</AnimalFormat>
+    <VehicleFormat>{victim} 死于车祸</VehicleFormat>
+    <FallFormat>{victim} 摔死了</FallFormat>
+    <DrownFormat>{victim} 淹死了</DrownFormat>
+    <FreezeFormat>{victim} 冻死了</FreezeFormat>
+    <BurnFormat>{victim} 被烧死了</BurnFormat>
+    <FoodFormat>{victim} 饿死了</FoodFormat>
+    <WaterFormat>{victim} 渴死了</WaterFormat>
+    <InfectionFormat>{victim} 感染致死</InfectionFormat>
+    <DefaultFormat>{victim} 死亡了</DefaultFormat>
+  </DeathMessage>
+
+  <!-- 广播组配置（新增功能，仅支持全员可见） -->
+  <BroadcastGroups>
+    <!-- 公告组1：服务器规则 -->
+    <BroadcastGroup name="server_rules" enabled="true">
+      <RotationInterval>120</RotationInterval>
+      <Messages>
+        <Message>欢迎来到服务器！请遵守规则。</Message>
+        <Message>使用 /help 查看可用命令。</Message>
+        <Message>禁止恶意破坏和骚扰其他玩家。</Message>
+      </Messages>
+    </BroadcastGroup>
+
+    <!-- 公告组2：VIP专属公告 -->
+    <BroadcastGroup name="vip_announcements" enabled="true">
+      <RotationInterval>180</RotationInterval>
+      <Messages>
+        <Message>VIP玩家专属福利：每日登录获得奖励！</Message>
+        <Message>VIP玩家可使用特殊前缀和颜色。</Message>
+      </Messages>
+    </BroadcastGroup>
+
+    <!-- 公告组3：死亡提示（禁用状态） -->
+    <BroadcastGroup name="death_tips" enabled="false">
+      <RotationInterval>300</RotationInterval>
+      <Messages>
+        <Message>提示：死亡后可以使用 /respawn 快速复活</Message>
+        <Message>提示：保存物品到安全屋避免丢失</Message>
+      </Messages>
+    </BroadcastGroup>
+  </BroadcastGroups>
+</NoNameTagConfiguration>

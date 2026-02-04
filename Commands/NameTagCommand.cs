@@ -16,7 +16,7 @@ namespace Emqo.NoNameTag.Commands
 
         public string Help => "Manage NoNameTag plugin settings";
 
-        public string Syntax => "/nametag <reload|refresh|check> [player]";
+        public string Syntax => "/nametag <reload|refresh|check|broadcasts> [args]";
 
         public List<string> Aliases => new List<string> { "nt" };
 
@@ -26,9 +26,7 @@ namespace Emqo.NoNameTag.Commands
         {
             if (command.Length == 0)
             {
-                SendMessage(caller, $"Usage: {Syntax}", Color.yellow);
-                SendMessage(caller, "Subcommands: reload, refresh, check", Color.yellow);
-                SendMessage(caller, "Edit permission groups in the configuration file and use /nametag reload", Color.yellow);
+                ShowHelp(caller);
                 return;
             }
 
@@ -45,11 +43,24 @@ namespace Emqo.NoNameTag.Commands
                 case "check":
                     ExecuteCheck(caller, command);
                     break;
+                case "broadcasts":
+                    ExecuteBroadcasts(caller, command);
+                    break;
                 default:
                     SendMessage(caller, $"Unknown subcommand: {subCommand}", Color.red);
-                    SendMessage(caller, $"Usage: {Syntax}", Color.yellow);
+                    ShowHelp(caller);
                     break;
             }
+        }
+
+        private void ShowHelp(IRocketPlayer caller)
+        {
+            SendMessage(caller, $"Usage: {Syntax}", Color.yellow);
+            SendMessage(caller, "Subcommands:", Color.yellow);
+            SendMessage(caller, "  reload - Reload configuration and restart services", Color.white);
+            SendMessage(caller, "  refresh [player] - Refresh display effects for all/one player", Color.white);
+            SendMessage(caller, "  check [player] - Check player's display effect", Color.white);
+            SendMessage(caller, "  broadcasts - List all broadcast groups and their status", Color.white);
         }
 
         private void ExecuteReload(IRocketPlayer caller)
@@ -126,6 +137,27 @@ namespace Emqo.NoNameTag.Commands
                 SendMessage(caller, $"Permission: {group.Permission} (Priority: {group.Priority})", Color.white);
                 SendMessage(caller, $"Prefix: {effect.Prefix} | Name Color: {effect.NameColor} | Suffix: {effect.Suffix}", Color.white);
             }
+        }
+
+        private void ExecuteBroadcasts(IRocketPlayer caller, string[] command)
+        {
+            var status = NoNameTagPlugin.Instance.BroadcastService?.GetBroadcastStatus();
+
+            if (status == null || status.Count == 0)
+            {
+                SendMessage(caller, "No broadcast groups configured.", Color.yellow);
+                return;
+            }
+
+            SendMessage(caller, "Broadcast Groups Status:", Color.yellow);
+
+            foreach (var kvp in status)
+            {
+                var statusText = kvp.Value ? "<color=green>Running</color>" : "<color=red>Stopped</color>";
+                SendMessage(caller, $"  {kvp.Key}: {statusText}", Color.white);
+            }
+
+            SendMessage(caller, "Use /nametag reload to restart all broadcasts.", Color.yellow);
         }
 
         private void SendMessage(IRocketPlayer caller, string message, Color color)
