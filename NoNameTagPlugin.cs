@@ -200,6 +200,10 @@ namespace Emqo.NoNameTag
 
         private void OnPlayerChatted(UnturnedPlayer player, ref Color color, string message, EChatMode chatMode, ref bool cancel)
         {
+            // 跳过命令消息
+            if (message.StartsWith("/"))
+                return;
+
             if (!IsValidChatMessage(player)) return;
 
             try
