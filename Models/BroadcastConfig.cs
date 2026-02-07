@@ -165,6 +165,54 @@ namespace Emqo.NoNameTag.Models
         [XmlElement("InfectionFormat")]
         public string InfectionFormat { get; set; } = "{victim} 感染致死";
 
+        [XmlElement("GunFormat")]
+        public string GunFormat { get; set; } = "{victim} 被 {killer} 射杀";
+
+        [XmlElement("MeleeFormat")]
+        public string MeleeFormat { get; set; } = "{victim} 被 {killer} 砍死";
+
+        [XmlElement("PunchFormat")]
+        public string PunchFormat { get; set; } = "{victim} 被 {killer} 打死";
+
+        [XmlElement("GrenadeFormat")]
+        public string GrenadeFormat { get; set; } = "{victim} 被 {killer} 炸死";
+
+        [XmlElement("ShredFormat")]
+        public string ShredFormat { get; set; } = "{victim} 被陷阱撕碎";
+
+        [XmlElement("LandmineFormat")]
+        public string LandmineFormat { get; set; } = "{victim} 踩到地雷";
+
+        [XmlElement("ArenaFormat")]
+        public string ArenaFormat { get; set; } = "{victim} 在竞技场中死亡";
+
+        [XmlElement("MissileFormat")]
+        public string MissileFormat { get; set; } = "{victim} 被 {killer} 的导弹击中";
+
+        [XmlElement("ChargeFormat")]
+        public string ChargeFormat { get; set; } = "{victim} 被炸药炸死";
+
+        [XmlElement("SplashFormat")]
+        public string SplashFormat { get; set; } = "{victim} 被爆炸波及";
+
+        [XmlElement("SentryFormat")]
+        public string SentryFormat { get; set; } = "{victim} 被哨兵击杀";
+
+        [XmlElement("AcidFormat")]
+        public string AcidFormat { get; set; } = "{victim} 被酸液腐蚀";
+
+        [XmlElement("BoulderFormat")]
+        public string BoulderFormat { get; set; } = "{victim} 被巨石砸死";
+
+        [XmlElement("SparkFormat")]
+        public string SparkFormat { get; set; } = "{victim} 被电死";
+
+        [XmlElement("SpitFormat")]
+        public string SpitFormat { get; set; } = "{victim} 被僵尸吐痰击杀";
+
+        [XmlElement("KillFormat")]
+        public string KillFormat { get; set; } = "{victim} 被管理员处决";
+
         [XmlElement("DefaultFormat")]
         public string DefaultFormat { get; set; } = "{victim} 死亡了";
 

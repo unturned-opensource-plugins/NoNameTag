@@ -243,6 +243,38 @@ namespace Emqo.NoNameTag.Services
                     return config.InfectionFormat;
                 case EDeathCause.SUICIDE:
                     return config.SelfKillFormat;
+                case EDeathCause.GUN:
+                    return config.GunFormat;
+                case EDeathCause.MELEE:
+                    return config.MeleeFormat;
+                case EDeathCause.PUNCH:
+                    return config.PunchFormat;
+                case EDeathCause.GRENADE:
+                    return config.GrenadeFormat;
+                case EDeathCause.SHRED:
+                    return config.ShredFormat;
+                case EDeathCause.LANDMINE:
+                    return config.LandmineFormat;
+                case EDeathCause.ARENA:
+                    return config.ArenaFormat;
+                case EDeathCause.MISSILE:
+                    return config.MissileFormat;
+                case EDeathCause.CHARGE:
+                    return config.ChargeFormat;
+                case EDeathCause.SPLASH:
+                    return config.SplashFormat;
+                case EDeathCause.SENTRY:
+                    return config.SentryFormat;
+                case EDeathCause.ACID:
+                    return config.AcidFormat;
+                case EDeathCause.BOULDER:
+                    return config.BoulderFormat;
+                case EDeathCause.SPARK:
+                    return config.SparkFormat;
+                case EDeathCause.SPIT:
+                    return config.SpitFormat;
+                case EDeathCause.KILL:
+                    return config.KillFormat;
                 default:
                     return config.DefaultFormat;
             }

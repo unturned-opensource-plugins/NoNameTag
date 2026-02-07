@@ -59,22 +59,33 @@ namespace Emqo.NoNameTag.Services
         {
             if (player == null) return;
 
+            ulong steamId = 0;
             try
             {
-                var steamId = player.CSteamID.m_SteamID;
+                steamId = player.CSteamID.m_SteamID;
+            }
+            catch
+            {
+                return;
+            }
+
+            if (steamId == 0) return;
+
+            try
+            {
                 if (_originalNicknames.TryGetValue(steamId, out var originalName))
                 {
-                    if (player?.Player?.channel?.owner?.playerID != null)
+                    if (player.Player?.channel?.owner != null)
                     {
                         player.Player.channel.owner.playerID.nickName = originalName;
                     }
                     _originalNicknames.Remove(steamId);
-                    Logger.Debug($"Removed name tag from {player.DisplayName}");
+                    Logger.Debug($"Removed name tag cache for {steamId}");
                 }
             }
-            catch (System.Exception ex)
+            catch
             {
-                Logger.Exception(ex, $"Error removing name tag from {player?.DisplayName}");
+                _originalNicknames.Remove(steamId);
             }
         }
 
