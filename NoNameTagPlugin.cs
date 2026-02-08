@@ -20,7 +20,6 @@ namespace Emqo.NoNameTag
         public PermissionService PermissionService { get; private set; }
         public NameTagManager NameTagManager { get; private set; }
         public BroadcastService BroadcastService { get; private set; }
-        public NameTagDisplayService NameTagDisplayService { get; private set; }
 
         protected override void Load()
         {
@@ -53,7 +52,6 @@ namespace Emqo.NoNameTag
             {
                 UnregisterEventHandlers();
                 BroadcastService?.StopAllBroadcasts();
-                NameTagDisplayService?.ClearAllNameTags();
                 Instance = null;
                 Logger.Info($"{Name} has been unloaded!");
             }
@@ -82,19 +80,13 @@ namespace Emqo.NoNameTag
         private void RefreshAllDisplays()
         {
             NameTagManager.RefreshAllPlayers();
-            if (Configuration.Instance.ApplyToNameTags)
-            {
-                NameTagDisplayService?.RefreshAllNameTags();
-            }
         }
 
         private void InitializeServices()
         {
             PermissionService = new PermissionService(Configuration.Instance);
             NameTagManager = new NameTagManager(Configuration.Instance, PermissionService);
-
             BroadcastService = new BroadcastService(Configuration.Instance, NameTagManager);
-            NameTagDisplayService = new NameTagDisplayService(Configuration.Instance, NameTagManager);
 
             Logger.Debug("All services initialized");
         }
@@ -142,33 +134,11 @@ namespace Emqo.NoNameTag
         private void ApplyPlayerEffects(UnturnedPlayer player)
         {
             NameTagManager.ApplyDisplayEffect(player);
-
-            if (Configuration.Instance.ApplyToNameTags)
-            {
-                StartCoroutine(DelayedApplyNameTag(player));
-            }
         }
 
         private void LogPlayerConnection(UnturnedPlayer player)
         {
             Logger.Debug($"Player connected: {player.DisplayName}");
-        }
-
-        private System.Collections.IEnumerator DelayedApplyNameTag(UnturnedPlayer player)
-        {
-            // 等待一帧，确保玩家完全初始化
-            yield return null;
-
-            // playerID 是 struct，不能判断 null，需要检查内部字段
-            if (player?.Player?.channel?.owner == null)
-                yield break;
-
-            // 检查 nickName 是否已初始化
-            var nickName = player.Player.channel.owner.playerID.nickName;
-            if (string.IsNullOrEmpty(nickName))
-                yield break;
-
-            NameTagDisplayService?.ApplyNameTag(player);
         }
 
         private void OnPlayerDisconnected(UnturnedPlayer player)
@@ -189,7 +159,6 @@ namespace Emqo.NoNameTag
         private void CleanupPlayerData(UnturnedPlayer player)
         {
             NameTagManager.RemoveDisplayEffect(player);
-            NameTagDisplayService?.RemoveNameTag(player);
             PermissionService?.ClearPlayerCache(player.CSteamID.m_SteamID);
         }
 

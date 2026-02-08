@@ -21,8 +21,6 @@ namespace Emqo.NoNameTag
 
         public bool ApplyToChatMessages { get; set; } = true;
 
-        public bool ApplyToNameTags { get; set; } = true;
-
         public PriorityMode PriorityMode { get; set; } = PriorityMode.HighestPriority;
 
         [XmlElement("AvatarSettings")]
@@ -61,7 +59,6 @@ namespace Emqo.NoNameTag
             DebugMode = false;
             DefaultNameColor = "#FFFFFF";
             ApplyToChatMessages = true;
-            ApplyToNameTags = true;
             PriorityMode = PriorityMode.HighestPriority;
 
             AvatarSettings = new AvatarConfig();
