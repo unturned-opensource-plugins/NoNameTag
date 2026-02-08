@@ -79,6 +79,9 @@ namespace Emqo.NoNameTag.Services
             if (!_config.Enabled || _config.Broadcast?.DeathMessage == null || !_config.Broadcast.DeathMessage.Enabled)
                 return;
 
+            if (_config.Broadcast.DeathMessage.DisplayMode == DisplayMode.None)
+                return;
+
             try
             {
                 if (sender == null || sender.player == null)
@@ -335,21 +338,40 @@ namespace Emqo.NoNameTag.Services
         }
 
         /// <summary>
-        /// 广播死亡消息（支持可见性控制）
+        /// 广播死亡消息（支持可见性控制和显示模式）
         /// </summary>
         private void BroadcastDeathMessage(string message, UnturnedPlayer victim, UnturnedPlayer killer)
         {
+            var displayMode = _config.Broadcast.DeathMessage.DisplayMode;
             var visibility = _config.Broadcast.DeathMessage.Visibility;
 
+            // 控制台输出
+            if (displayMode == DisplayMode.Console || displayMode == DisplayMode.Both)
+            {
+                Logger.Info($"[死亡] {StripRichText(message)}", LogCategory.DeathMessage);
+            }
+
+            // 聊天框输出
+            if (displayMode == DisplayMode.Chat || displayMode == DisplayMode.Both)
+            {
+                SendDeathMessageToChat(message, visibility, victim, killer);
+            }
+
+            Logger.Debug($"Death message broadcasted: {message} (DisplayMode: {displayMode}, Visibility: {visibility})", LogCategory.DeathMessage);
+        }
+
+        /// <summary>
+        /// 发送死亡消息到聊天框
+        /// </summary>
+        private void SendDeathMessageToChat(string message, DeathMessageVisibility visibility, UnturnedPlayer victim, UnturnedPlayer killer)
+        {
             switch (visibility)
             {
                 case DeathMessageVisibility.All:
-                    // 全员可见
                     ChatManager.serverSendMessage(message, Color.white, null, null, EChatMode.GLOBAL, null, true);
                     break;
 
                 case DeathMessageVisibility.KillerOnly:
-                    // 仅击杀者可见
                     if (killer != null)
                     {
                         var killerSteamPlayer = GetSteamPlayer(killer.CSteamID);
@@ -361,7 +383,6 @@ namespace Emqo.NoNameTag.Services
                     break;
 
                 case DeathMessageVisibility.VictimOnly:
-                    // 仅被杀者可见
                     if (victim != null)
                     {
                         var victimSteamPlayer = GetSteamPlayer(victim.CSteamID);
@@ -373,7 +394,6 @@ namespace Emqo.NoNameTag.Services
                     break;
 
                 case DeathMessageVisibility.KillerAndVictimOnly:
-                    // 击杀者和被杀者可见
                     if (killer != null)
                     {
                         var killerSteamPlayer = GetSteamPlayer(killer.CSteamID);
@@ -392,8 +412,14 @@ namespace Emqo.NoNameTag.Services
                     }
                     break;
             }
+        }
 
-            Logger.Debug($"Death message broadcasted: {message} (Visibility: {visibility})", LogCategory.DeathMessage);
+        /// <summary>
+        /// 移除富文本标签
+        /// </summary>
+        private string StripRichText(string text)
+        {
+            return System.Text.RegularExpressions.Regex.Replace(text, "<.*?>", string.Empty);
         }
 
         /// <summary>
@@ -433,6 +459,9 @@ namespace Emqo.NoNameTag.Services
         /// </summary>
         private void StartBroadcastGroup(BroadcastGroupConfig group)
         {
+            if (group.DisplayMode == DisplayMode.None)
+                return;
+
             lock (_timerLock)
             {
                 // 如果已存在，先停止
@@ -485,35 +514,45 @@ namespace Emqo.NoNameTag.Services
                     string avatarUrl = message.Avatar;
                     if (!string.IsNullOrEmpty(avatarUrl))
                     {
-                        // 替换头像 URL 中的变量
                         avatarUrl = ReplaceVariables(avatarUrl);
                     }
 
-                    // 发送到主线程执行
-                    UnityMainThreadDispatcher.Instance().Enqueue(() =>
-                    {
-                        try
-                        {
-                            ChatManager.serverSendMessage(
-                                messageText,
-                                Color.white,
-                                null,
-                                null,
-                                EChatMode.GLOBAL,
-                                avatarUrl,
-                                true
-                            );
+                    var displayMode = group.DisplayMode;
 
-                            if (_config.DebugMode)
-                            {
-                                Logger.Debug($"Broadcast '{group.Name}': {messageText}", LogCategory.Plugin);
-                            }
-                        }
-                        catch (Exception ex)
+                    // 控制台输出
+                    if (displayMode == DisplayMode.Console || displayMode == DisplayMode.Both)
+                    {
+                        Logger.Info($"[广播] {StripRichText(messageText)}", LogCategory.Plugin);
+                    }
+
+                    // 聊天框输出
+                    if (displayMode == DisplayMode.Chat || displayMode == DisplayMode.Both)
+                    {
+                        UnityMainThreadDispatcher.Instance().Enqueue(() =>
                         {
-                            Logger.Exception(ex, $"Error sending broadcast message for group '{group.Name}'", LogCategory.Plugin);
-                        }
-                    });
+                            try
+                            {
+                                ChatManager.serverSendMessage(
+                                    messageText,
+                                    Color.white,
+                                    null,
+                                    null,
+                                    EChatMode.GLOBAL,
+                                    avatarUrl,
+                                    true
+                                );
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.Exception(ex, $"Error sending broadcast message for group '{group.Name}'", LogCategory.Plugin);
+                            }
+                        });
+                    }
+
+                    if (_config.DebugMode)
+                    {
+                        Logger.Debug($"Broadcast '{group.Name}': {messageText} (DisplayMode: {displayMode})", LogCategory.Plugin);
+                    }
 
                     // 更新索引到下一条消息
                     _currentMessageIndices[group.Name] = (currentIndex + 1) % group.Messages.Count;

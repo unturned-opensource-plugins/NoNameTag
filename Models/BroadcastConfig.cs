@@ -4,6 +4,32 @@ using System.Xml.Serialization;
 namespace Emqo.NoNameTag.Models
 {
     /// <summary>
+    /// 消息显示模式
+    /// </summary>
+    public enum DisplayMode
+    {
+        /// <summary>
+        /// 聊天框显示
+        /// </summary>
+        Chat,
+
+        /// <summary>
+        /// 服务器控制台显示
+        /// </summary>
+        Console,
+
+        /// <summary>
+        /// 聊天框和控制台都显示
+        /// </summary>
+        Both,
+
+        /// <summary>
+        /// 禁用显示
+        /// </summary>
+        None
+    }
+
+    /// <summary>
     /// 死亡消息可见性控制枚举
     /// </summary>
     public enum DeathMessageVisibility
@@ -93,6 +119,12 @@ namespace Emqo.NoNameTag.Models
         [XmlAttribute("enabled")]
         public bool Enabled { get; set; } = true;
 
+        /// <summary>
+        /// 显示模式：Chat（聊天框）或 None（禁用）
+        /// </summary>
+        [XmlAttribute("displayMode")]
+        public DisplayMode DisplayMode { get; set; } = DisplayMode.Chat;
+
         [XmlElement("RotationInterval")]
         public int RotationInterval { get; set; } = 60;
 
@@ -119,6 +151,12 @@ namespace Emqo.NoNameTag.Models
     {
         [XmlElement("Enabled")]
         public bool Enabled { get; set; } = true;
+
+        /// <summary>
+        /// 显示模式：Chat（聊天框）或 None（禁用）
+        /// </summary>
+        [XmlElement("DisplayMode")]
+        public DisplayMode DisplayMode { get; set; } = DisplayMode.Chat;
 
         /// <summary>
         /// 死亡消息可见性控制
