@@ -12,6 +12,7 @@ namespace Emqo.NoNameTag.Utilities
     public class UnityMainThreadDispatcher : MonoBehaviour
     {
         private static UnityMainThreadDispatcher _instance;
+        private static readonly object _lock = new object();
         private static readonly ConcurrentQueue<Action> _actionQueue = new ConcurrentQueue<Action>();
 
         /// <summary>
@@ -21,19 +22,39 @@ namespace Emqo.NoNameTag.Utilities
         {
             if (_instance == null)
             {
-                // 查找现有的实例
-                _instance = FindObjectOfType<UnityMainThreadDispatcher>();
-
-                if (_instance == null)
+                lock (_lock)
                 {
-                    // 创建新的游戏对象
-                    var dispatcherObject = new GameObject("NoNameTag_MainThreadDispatcher");
-                    _instance = dispatcherObject.AddComponent<UnityMainThreadDispatcher>();
-                    DontDestroyOnLoad(dispatcherObject);
+                    if (_instance == null)
+                    {
+                        _instance = FindObjectOfType<UnityMainThreadDispatcher>();
+
+                        if (_instance == null)
+                        {
+                            var dispatcherObject = new GameObject("NoNameTag_MainThreadDispatcher");
+                            _instance = dispatcherObject.AddComponent<UnityMainThreadDispatcher>();
+                            DontDestroyOnLoad(dispatcherObject);
+                        }
+                    }
                 }
             }
 
             return _instance;
+        }
+
+        /// <summary>
+        /// 销毁单例实例
+        /// </summary>
+        public static void DestroyInstance()
+        {
+            lock (_lock)
+            {
+                if (_instance != null)
+                {
+                    _instance.ClearQueue();
+                    Destroy(_instance.gameObject);
+                    _instance = null;
+                }
+            }
         }
 
         /// <summary>
@@ -50,7 +71,6 @@ namespace Emqo.NoNameTag.Utilities
         /// </summary>
         private void Update()
         {
-            // 执行队列中的所有动作
             while (_actionQueue.TryDequeue(out var action))
             {
                 try
@@ -69,10 +89,7 @@ namespace Emqo.NoNameTag.Utilities
         /// </summary>
         public void ClearQueue()
         {
-            while (_actionQueue.TryDequeue(out _))
-            {
-                // 清空队列
-            }
+            while (_actionQueue.TryDequeue(out _)) { }
         }
 
         /// <summary>
@@ -81,9 +98,12 @@ namespace Emqo.NoNameTag.Utilities
         private void OnDestroy()
         {
             ClearQueue();
-            if (_instance == this)
+            lock (_lock)
             {
-                _instance = null;
+                if (_instance == this)
+                {
+                    _instance = null;
+                }
             }
         }
     }

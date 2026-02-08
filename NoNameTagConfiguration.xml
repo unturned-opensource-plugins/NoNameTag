@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<NoNameTagConfiguration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Enabled>true</Enabled>
+  <DebugMode>false</DebugMode>
+  <DefaultNameColor>#FFFFFF</DefaultNameColor>
+  <ApplyToChatMessages>true</ApplyToChatMessages>
+  <PriorityMode>HighestPriority</PriorityMode>
+  <AvatarSettings />
+  <PermissionGroups>
+  </PermissionGroups>
+  <DeathMessage>
+    <Enabled>true</Enabled>
+    <DisplayMode>Chat</DisplayMode>
+    <Visibility>All</Visibility>
+    <Format>{killer} 击杀了 {victim}</Format>
+    <SelfKillFormat>{victim} 自杀了</SelfKillFormat>
+    <ZombieFormat>{victim} 被僵尸击杀</ZombieFormat>
+    <AnimalFormat>{victim} 被动物击杀</AnimalFormat>
+    <VehicleFormat>{victim} 死于车祸</VehicleFormat>
+    <FallFormat>{victim} 摔死了</FallFormat>
+    <DrownFormat>{victim} 淹死了</DrownFormat>
+    <FreezeFormat>{victim} 冻死了</FreezeFormat>
+    <BurnFormat>{victim} 被烧死了</BurnFormat>
+    <FoodFormat>{victim} 饿死了</FoodFormat>
+    <WaterFormat>{victim} 渴死了</WaterFormat>
+    <InfectionFormat>{victim} 感染致死</InfectionFormat>
+    <DefaultFormat>{victim} 死亡了</DefaultFormat>
+  </DeathMessage>
+  <BroadcastGroups>
+    <BroadcastGroup name="server_tips" enabled="true" displayMode="Chat">
+      <RotationInterval>300</RotationInterval>
+      <Messages>
+        <Message>
+          <Message>提示：不要信任任何人，欺骗无处不在。</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+        <Message>
+          <Message>提示：使用&lt;color=#3498db&gt;/tpa [玩家名称]&lt;/color&gt;申请传送</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+        <Message>
+          <Message>提示：VIP购买请联系qq群主。</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+        <Message>
+          <Message>提示：QQ群：464790203</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+        <Message>
+          <Message>提示：使用&lt;color=#3498db&gt;/home&lt;/color&gt;回到绑定的床</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+        <Message>
+          <Message>提示：国内顶尖纯净服，绝无神权！</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+        <Message>
+          <Message>提示：使用&lt;color=#3498db&gt;/kit xs&lt;/color&gt;领取新手礼包</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+        <Message>
+          <Message>提示：禁止围堵资源点！违规者封禁7天。</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+        <Message>
+          <Message>提示：不择手段的活着，才是末日生存之道！</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+        <Message>
+          <Message>提示：不鸽BuGelll系列服务器：德国全掉服，俄罗斯手衣不掉服。</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+        <Message>
+          <Message>提示：官网bugelll.top可查看玩家统计信息，需开加速器登录。</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+        <Message>
+          <Message>提示：在线时长超10小时，可向服主申请4*4云背包，双服互通。</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+        <Message>
+          <Message>提示：遭到辱骂，嘲讽先截图后向管理员举报。</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+        <Message>
+          <Message>提示：禁止堵出生点，违规者封禁3天。</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+        <Message>
+          <Message>提示：玩家建筑废墟，可找管理员清理。</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+        <Message>
+          <Message>提示：活下去！祝你好运！</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+        <Message>
+          <Message>提示：德国地图禁止在道路上建造或防止障碍，违规者封禁3天。</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+        <Message>
+          <Message>提示：禁止卡bug，违规者永封。</Message>
+          <Avatar>https://i.imgur.com/tLPIfuf.png</Avatar>
+        </Message>
+      </Messages>
+    </BroadcastGroup>
+  </BroadcastGroups>
+  <WelcomeMessage enabled="true">
+    <Text>&lt;size=18&gt;欢迎来到不鸽BuGelll服务器！&lt;/size&gt;
+QQ群号：464790203</Text>
+    <IconUrl>https://i.imgur.com/tLPIfuf.png</IconUrl>
+    <Color>white</Color>
+    <EnableJoinLink>false</EnableJoinLink>
+    <JoinLinkUrl>https://bugelll.top</JoinLinkUrl>
+    <JoinLinkMessage>访问不鸽BuGelll官网查看玩家统计信息</JoinLinkMessage>
+    <EnableLeaveMessage>true</EnableLeaveMessage>
+    <LeaveText>{player} 离开了服务器</LeaveText>
+    <LeaveIconUrl>https://i.imgur.com/tLPIfuf.png</LeaveIconUrl>
+  </WelcomeMessage>
+  <TextCommands>
+    <TextCommand>
+      <Name>rules</Name>
+      <Message>QQ群号：464790203</Message>
+      <IconUrl>https://i.imgur.com/tLPIfuf.png</IconUrl>
+      <Color>white</Color>
+    </TextCommand>
+  </TextCommands>
+  <WebCommands>
+    <WebCommand>
+      <Name>website</Name>
+      <Url>https://bugelll.top</Url>
+      <Description>访问不鸽BuGelll官网查看玩家统计信息</Description>
+    </WebCommand>
+  </WebCommands>
+</NoNameTagConfiguration>

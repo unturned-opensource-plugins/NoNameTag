@@ -6,6 +6,7 @@ using Steamworks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Timers;
 using UnityEngine;
 using Logger = Emqo.NoNameTag.Utilities.PluginLogger;
@@ -14,61 +15,47 @@ namespace Emqo.NoNameTag.Services
 {
     /// <summary>
     /// 统一广播服务接口
-    /// 处理死亡消息和轮播公告
     /// </summary>
-    public interface IBroadcastService
+    public interface IBroadcastService : IDisposable
     {
-        /// <summary>
-        /// 处理玩家死亡事件
-        /// </summary>
         void HandlePlayerDeath(PlayerLife sender, EDeathCause cause, ELimb limb, CSteamID instigator);
-
-        /// <summary>
-        /// 启动所有广播组
-        /// </summary>
+        void SendWelcomeMessage(UnturnedPlayer player);
+        void SendLeaveMessage(UnturnedPlayer player);
         void StartAllBroadcasts();
-
-        /// <summary>
-        /// 停止所有广播组
-        /// </summary>
         void StopAllBroadcasts();
-
-        /// <summary>
-        /// 重新加载广播配置
-        /// </summary>
         void ReloadBroadcasts();
-
-        /// <summary>
-        /// 获取所有广播组的运行状态
-        /// </summary>
         Dictionary<string, bool> GetBroadcastStatus();
-
-        /// <summary>
-        /// 手动发送广播消息
-        /// </summary>
         void SendBroadcast(string groupName, string message);
     }
 
     /// <summary>
     /// 统一广播服务实现
-    /// 同时管理死亡消息和轮播公告
     /// </summary>
     public class BroadcastService : IBroadcastService
     {
+        private static readonly Regex RichTextRegex = new Regex("<.*?>", RegexOptions.Compiled);
+
         private readonly NoNameTagConfiguration _config;
         private readonly NameTagManager _nameTagManager;
-
         private readonly Dictionary<string, Timer> _broadcastTimers;
         private readonly Dictionary<string, int> _currentMessageIndices;
         private readonly object _timerLock = new object();
+        private bool _disposed;
 
         public BroadcastService(NoNameTagConfiguration config, NameTagManager nameTagManager)
         {
             _config = config;
             _nameTagManager = nameTagManager;
-
             _broadcastTimers = new Dictionary<string, Timer>();
             _currentMessageIndices = new Dictionary<string, int>();
+            _disposed = false;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            StopAllBroadcasts();
         }
 
         /// <summary>
@@ -99,28 +86,20 @@ namespace Emqo.NoNameTag.Services
                     {
                         killer = UnturnedPlayer.FromCSteamID(instigator);
                         // 如果 killer 为 null 或者是受害者自己，则认为是环境死亡
-                        if (killer != null)
-                        {
-                            try
-                            {
-                                if (killer.CSteamID.m_SteamID == victim.CSteamID.m_SteamID)
-                                {
-                                    killer = null;
-                                }
-                            }
-                            catch
-                            {
-                                // 如果无法比较 SteamID，则认为 killer 无效
-                                killer = null;
-                            }
-                        }
-                    }
-                    catch
+                if (killer != null)
+                {
+                    if (killer.CSteamID.m_SteamID == victim.CSteamID.m_SteamID)
                     {
-                        // 如果无法获取 killer，则认为是环境死亡
                         killer = null;
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Could not get killer: {ex.Message}", LogCategory.DeathMessage);
+                killer = null;
+            }
+        }
 
                 var message = FormatDeathMessage(victim, killer, cause);
                 if (!string.IsNullOrEmpty(message))
@@ -157,15 +136,8 @@ namespace Emqo.NoNameTag.Services
 
                 if (killer != null)
                 {
-                    try
-                    {
-                        isSelfKill = killer.CSteamID == victim.CSteamID;
-                        isPlayerKill = !isSelfKill;
-                    }
-                    catch
-                    {
-                        isPlayerKill = true;
-                    }
+                    isSelfKill = killer.CSteamID == victim.CSteamID;
+                    isPlayerKill = !isSelfKill;
                 }
 
                 if (isSelfKill)
@@ -291,50 +263,23 @@ namespace Emqo.NoNameTag.Services
             if (player == null)
                 return "Unknown";
 
+            string playerName;
             try
             {
-                // 尝试获取玩家名称，如果失败则使用备用名称
-                string playerName = "Unknown";
-                try
-                {
-                    playerName = player.DisplayName ?? player.CharacterName ?? "Unknown";
-                }
-                catch
-                {
-                    // 如果 DisplayName 失败，尝试直接访问 Player 对象
-                    try
-                    {
-                        if (player.Player != null && player.Player.channel != null)
-                        {
-                            playerName = player.Player.channel.owner.playerID.characterName ?? "Unknown";
-                        }
-                    }
-                    catch
-                    {
-                        playerName = "Unknown";
-                    }
-                }
-
-                // 尝试获取权限组效果
-                try
-                {
-                    var group = _nameTagManager.GetPlayerEffect(player.CSteamID.m_SteamID);
-                    if (group?.DisplayEffect != null)
-                    {
-                        return NameFormatter.FormatColoredName(playerName, group.DisplayEffect);
-                    }
-                }
-                catch
-                {
-                    // 忽略权限组获取错误
-                }
-
-                return playerName;
+                playerName = player.DisplayName ?? player.CharacterName ?? "Unknown";
             }
             catch
             {
-                return "Unknown";
+                playerName = "Unknown";
             }
+
+            var group = _nameTagManager?.GetPlayerEffect(player.CSteamID.m_SteamID);
+            if (group?.DisplayEffect != null)
+            {
+                return NameFormatter.FormatColoredName(playerName, group.DisplayEffect);
+            }
+
+            return playerName;
         }
 
         /// <summary>
@@ -419,7 +364,7 @@ namespace Emqo.NoNameTag.Services
         /// </summary>
         private string StripRichText(string text)
         {
-            return System.Text.RegularExpressions.Regex.Replace(text, "<.*?>", string.Empty);
+            return RichTextRegex.Replace(text, string.Empty);
         }
 
         /// <summary>
@@ -671,6 +616,85 @@ namespace Emqo.NoNameTag.Services
             });
 
             Logger.Debug($"Manual broadcast sent to group '{groupName}': {message}", LogCategory.Plugin);
+        }
+
+        /// <summary>
+        /// 发送欢迎消息给玩家
+        /// </summary>
+        public void SendWelcomeMessage(UnturnedPlayer player)
+        {
+            if (player == null || _config.WelcomeMessage == null || !_config.WelcomeMessage.Enabled)
+                return;
+
+            try
+            {
+                var welcomeConfig = _config.WelcomeMessage;
+                var messageText = welcomeConfig.Text;
+
+                // 替换变量
+                messageText = ReplaceVariables(messageText);
+                messageText = messageText.Replace("{player}", player.DisplayName);
+                messageText = messageText.Replace("{br}", "\n");
+
+                // 转换富文本格式
+                messageText = messageText.Replace("{", "<").Replace("}", ">");
+
+                var iconUrl = welcomeConfig.IconUrl;
+                if (!string.IsNullOrEmpty(iconUrl))
+                {
+                    iconUrl = ReplaceVariables(iconUrl);
+                }
+
+                // 发送欢迎消息给所有玩家
+                ChatManager.serverSendMessage(messageText, Color.white, null, null, EChatMode.GLOBAL, iconUrl, true);
+
+                // 发送加入链接（仅给加入的玩家）
+                if (welcomeConfig.EnableJoinLink && !string.IsNullOrEmpty(welcomeConfig.JoinLinkUrl))
+                {
+                    var linkMessage = $"<link=\"{welcomeConfig.JoinLinkUrl}\">{welcomeConfig.JoinLinkMessage}</link>";
+                    ChatManager.serverSendMessage(linkMessage, Color.white, null, player.SteamPlayer(), EChatMode.SAY, iconUrl, true);
+                }
+
+                Logger.Debug($"Welcome message sent for player: {player.DisplayName}", LogCategory.Plugin);
+            }
+            catch (Exception ex)
+            {
+                Logger.Exception(ex, $"Error sending welcome message for {player?.DisplayName}", LogCategory.Plugin);
+            }
+        }
+
+        /// <summary>
+        /// 发送离开消息
+        /// </summary>
+        public void SendLeaveMessage(UnturnedPlayer player)
+        {
+            if (player == null || _config.WelcomeMessage == null || !_config.WelcomeMessage.EnableLeaveMessage)
+                return;
+
+            try
+            {
+                var welcomeConfig = _config.WelcomeMessage;
+                var messageText = welcomeConfig.LeaveText;
+
+                messageText = ReplaceVariables(messageText);
+                messageText = messageText.Replace("{player}", player.DisplayName);
+                messageText = messageText.Replace("{br}", "\n");
+                messageText = messageText.Replace("{", "<").Replace("}", ">");
+
+                var iconUrl = welcomeConfig.LeaveIconUrl;
+                if (!string.IsNullOrEmpty(iconUrl))
+                {
+                    iconUrl = ReplaceVariables(iconUrl);
+                }
+
+                ChatManager.serverSendMessage(messageText, Color.white, null, null, EChatMode.GLOBAL, iconUrl, true);
+
+                Logger.Debug($"Leave message sent for player: {player.DisplayName}", LogCategory.Plugin);
+            }
+            catch (Exception ex)
+            {
+                Logger.Exception(ex, $"Error sending leave message for {player?.DisplayName}", LogCategory.Plugin);
+            }
         }
     }
 }

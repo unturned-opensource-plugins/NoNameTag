@@ -3,6 +3,7 @@ using Emqo.NoNameTag.Utilities;
 using Rocket.Unturned.Player;
 using SDG.Unturned;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Logger = Emqo.NoNameTag.Utilities.PluginLogger;
@@ -13,14 +14,14 @@ namespace Emqo.NoNameTag.Services
     {
         private readonly NoNameTagConfiguration _config;
         private readonly PermissionService _permissionService;
-        private readonly Dictionary<ulong, PermissionGroupConfig> _playerEffects;
-        private const int MaxCacheSize = 1000; // 防止无限增长
+        private readonly ConcurrentDictionary<ulong, PermissionGroupConfig> _playerEffects;
+        private const int MaxCacheSize = 1000;
 
         public NameTagManager(NoNameTagConfiguration config, PermissionService permissionService)
         {
             _config = config;
             _permissionService = permissionService;
-            _playerEffects = new Dictionary<ulong, PermissionGroupConfig>();
+            _playerEffects = new ConcurrentDictionary<ulong, PermissionGroupConfig>();
         }
 
         public void ApplyDisplayEffect(UnturnedPlayer player)
@@ -36,7 +37,7 @@ namespace Emqo.NoNameTag.Services
                     Logger.Debug($"Applied display effect to {player.DisplayName}: {group.Permission}");
                 }
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
                 Logger.Exception(ex, $"Error applying display effect to {player?.DisplayName}");
             }
@@ -47,9 +48,8 @@ namespace Emqo.NoNameTag.Services
             if (player == null) return;
 
             var steamId = player.CSteamID.m_SteamID;
-            _playerEffects.Remove(steamId);
+            _playerEffects.TryRemove(steamId, out _);
 
-            // 定期清理过期条目
             if (_playerEffects.Count > MaxCacheSize)
             {
                 CleanupCache();
@@ -80,9 +80,13 @@ namespace Emqo.NoNameTag.Services
             return group;
         }
 
+        public void ClearAll()
+        {
+            _playerEffects.Clear();
+        }
+
         private void CleanupCache()
         {
-            // 移除不在线的玩家
             var onlineSteamIds = new HashSet<ulong>();
             foreach (var client in Provider.clients)
             {
@@ -97,7 +101,7 @@ namespace Emqo.NoNameTag.Services
 
             foreach (var key in keysToRemove)
             {
-                _playerEffects.Remove(key);
+                _playerEffects.TryRemove(key, out _);
             }
 
             Logger.Debug($"Cleaned up {keysToRemove.Count} offline player entries. Cache size: {_playerEffects.Count}");

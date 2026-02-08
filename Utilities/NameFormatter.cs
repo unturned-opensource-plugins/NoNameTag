@@ -5,37 +5,10 @@ using Logger = Emqo.NoNameTag.Utilities.PluginLogger;
 namespace Emqo.NoNameTag.Utilities
 {
     /// <summary>
-    /// 统一的名称格式化工具类，消除代码重复
+    /// 统一的名称格式化工具类
     /// </summary>
     public static class NameFormatter
     {
-        /// <summary>
-        /// 判断是否为 Sprite ID（以 steam_ 或 icon_ 开头）
-        /// </summary>
-        private static bool IsSpriteId(string avatar)
-        {
-            if (string.IsNullOrEmpty(avatar))
-                return false;
-
-            return avatar.StartsWith("steam_") || avatar.StartsWith("icon_");
-        }
-
-        /// <summary>
-        /// 生成头像标签
-        /// </summary>
-        private static string BuildAvatarTag(string avatar, int size)
-        {
-            if (string.IsNullOrEmpty(avatar))
-                return "";
-
-            if (IsSpriteId(avatar))
-            {
-                return $"<sprite name=\"{avatar}\" size={size}>";
-            }
-
-            // Emoji 或其他文本
-            return avatar;
-        }
         /// <summary>
         /// 格式化带颜色的名称标签
         /// </summary>
@@ -60,6 +33,14 @@ namespace Emqo.NoNameTag.Utilities
         }
 
         /// <summary>
+        /// 格式化带头像的名称标签（用于聊天消息）
+        /// </summary>
+        public static string FormatNameWithAvatar(string playerName, DisplayEffectConfig effect, AvatarPosition position)
+        {
+            return FormatColoredName(playerName, effect);
+        }
+
+        /// <summary>
         /// 格式化不带颜色的名称（仅前缀和后缀）
         /// </summary>
         public static string FormatPlainName(string playerName, DisplayEffectConfig effect)
@@ -67,8 +48,8 @@ namespace Emqo.NoNameTag.Utilities
             if (effect == null)
                 return playerName;
 
-            var prefix = !string.IsNullOrEmpty(effect.Prefix) ? effect.Prefix : "";
-            var suffix = !string.IsNullOrEmpty(effect.Suffix) ? effect.Suffix : "";
+            var prefix = effect.Prefix ?? "";
+            var suffix = effect.Suffix ?? "";
 
             return $"{prefix}{playerName}{suffix}";
         }
@@ -112,29 +93,6 @@ namespace Emqo.NoNameTag.Utilities
         }
 
         /// <summary>
-        /// 格式化带头像的名称标签（用于聊天消息）
-        /// </summary>
-        public static string FormatNameWithAvatar(string playerName, DisplayEffectConfig effect, AvatarPosition position)
-        {
-            if (effect == null)
-                return playerName;
-
-            var prefixHex = GetHexColor(effect.PrefixColor);
-            var nameHex = GetHexColor(effect.NameColor);
-            var suffixHex = GetHexColor(effect.SuffixColor);
-
-            var prefixPart = !string.IsNullOrEmpty(effect.Prefix)
-                ? string.Format(Constants.ColorTagFormat, prefixHex, effect.Prefix)
-                : "";
-            var namePart = string.Format(Constants.ColorTagFormat, nameHex, playerName);
-            var suffixPart = !string.IsNullOrEmpty(effect.Suffix)
-                ? string.Format(Constants.ColorTagFormat, suffixHex, effect.Suffix)
-                : "";
-
-            return $"{prefixPart}{namePart}{suffixPart}";
-        }
-
-        /// <summary>
         /// 格式化带头像的广播消息
         /// </summary>
         public static (string message, string avatarUrl) FormatBroadcastMessageWithAvatar(string message, string avatar, AvatarPosition position)
@@ -142,16 +100,13 @@ namespace Emqo.NoNameTag.Utilities
             if (string.IsNullOrEmpty(avatar))
                 return (message, null);
 
-            // 检查是否为 Sprite ID（以 steam_ 或 icon_ 开头）
             var isSpriteId = avatar.StartsWith("steam_") || avatar.StartsWith("icon_");
 
             if (isSpriteId)
             {
-                // Sprite ID 作为头像 URL
                 return (message, avatar);
             }
 
-            // Emoji 或其他文本，直接嵌入消息
             return position == AvatarPosition.Left
                 ? ($"{avatar} {message}", null)
                 : ($"{message} {avatar}", null);

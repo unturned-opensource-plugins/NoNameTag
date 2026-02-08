@@ -51,7 +51,10 @@ namespace Emqo.NoNameTag
             try
             {
                 UnregisterEventHandlers();
-                BroadcastService?.StopAllBroadcasts();
+                BroadcastService?.Dispose();
+                NameTagManager?.ClearAll();
+                PermissionService?.ClearAllCache();
+                UnityMainThreadDispatcher.DestroyInstance();
                 Instance = null;
                 Logger.Info($"{Name} has been unloaded!");
             }
@@ -96,7 +99,10 @@ namespace Emqo.NoNameTag
             try
             {
                 Logger.DebugEnabled = Configuration.Instance.DebugMode;
-                BroadcastService?.StopAllBroadcasts();
+                Configuration.Instance.ClearCache();
+                BroadcastService?.Dispose();
+                NameTagManager?.ClearAll();
+                PermissionService?.ClearAllCache();
                 InitializeServices();
                 RefreshAllDisplays();
                 BroadcastService?.StartAllBroadcasts();
@@ -128,12 +134,13 @@ namespace Emqo.NoNameTag
             return Configuration.Instance.Enabled
                 && player != null
                 && player.Player != null
-                && player.CSteamID != null;
+                && player.CSteamID != CSteamID.Nil;
         }
 
         private void ApplyPlayerEffects(UnturnedPlayer player)
         {
             NameTagManager.ApplyDisplayEffect(player);
+            BroadcastService?.SendWelcomeMessage(player);
         }
 
         private void LogPlayerConnection(UnturnedPlayer player)
@@ -158,6 +165,7 @@ namespace Emqo.NoNameTag
 
         private void CleanupPlayerData(UnturnedPlayer player)
         {
+            BroadcastService?.SendLeaveMessage(player);
             NameTagManager.RemoveDisplayEffect(player);
             PermissionService?.ClearPlayerCache(player.CSteamID.m_SteamID);
         }

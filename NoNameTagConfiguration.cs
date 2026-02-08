@@ -37,6 +37,19 @@ namespace Emqo.NoNameTag
         [XmlArrayItem("BroadcastGroup")]
         public List<BroadcastGroupConfig> BroadcastGroups { get; set; } = new List<BroadcastGroupConfig>();
 
+        [XmlElement("WelcomeMessage")]
+        public WelcomeMessageConfig WelcomeMessage { get; set; } = new WelcomeMessageConfig();
+
+        [XmlArray("TextCommands")]
+        [XmlArrayItem("TextCommand")]
+        public List<TextCommandConfig> TextCommands { get; set; } = new List<TextCommandConfig>();
+
+        [XmlArray("WebCommands")]
+        [XmlArrayItem("WebCommand")]
+        public List<WebCommandConfig> WebCommands { get; set; } = new List<WebCommandConfig>();
+
+        private BroadcastConfig _broadcastCache;
+
         /// <summary>
         /// 统一的广播配置（用于 BroadcastService）
         /// </summary>
@@ -45,12 +58,24 @@ namespace Emqo.NoNameTag
         {
             get
             {
-                return new BroadcastConfig
+                if (_broadcastCache == null)
                 {
-                    DeathMessage = DeathMessage,
-                    BroadcastGroups = BroadcastGroups
-                };
+                    _broadcastCache = new BroadcastConfig
+                    {
+                        DeathMessage = DeathMessage,
+                        BroadcastGroups = BroadcastGroups
+                    };
+                }
+                return _broadcastCache;
             }
+        }
+
+        /// <summary>
+        /// 清除缓存（配置重载时调用）
+        /// </summary>
+        public void ClearCache()
+        {
+            _broadcastCache = null;
         }
 
         public void LoadDefaults()
@@ -93,6 +118,24 @@ namespace Emqo.NoNameTag
                         new BroadcastMessage("禁止恶意破坏和骚扰其他玩家。", 0)
                     }
                 }
+            };
+
+            WelcomeMessage = new WelcomeMessageConfig
+            {
+                Enabled = true,
+                Text = "欢迎 {player} 加入服务器！",
+                IconUrl = "",
+                EnableJoinLink = false
+            };
+
+            TextCommands = new List<TextCommandConfig>
+            {
+                new TextCommandConfig { Name = "rules", Message = "请遵守服务器规则！", Color = "white" }
+            };
+
+            WebCommands = new List<WebCommandConfig>
+            {
+                new WebCommandConfig { Name = "website", Url = "https://example.com", Description = "访问我们的网站" }
             };
         }
     }

@@ -1,21 +1,21 @@
 using Emqo.NoNameTag.Models;
+using Emqo.NoNameTag.Utilities;
 using Rocket.API;
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Collections.Concurrent;
 
 namespace Emqo.NoNameTag.Services
 {
     public class PermissionService : IPermissionService
     {
         private readonly NoNameTagConfiguration _config;
-        private readonly Dictionary<ulong, (PermissionGroupConfig group, long timestamp)> _permissionCache;
-        private const int CacheExpirationSeconds = 300; // 5分钟缓存
+        private readonly ConcurrentDictionary<ulong, (PermissionGroupConfig group, long timestamp)> _permissionCache;
+        private const int CacheExpirationSeconds = Constants.PermissionCacheExpirationSeconds;
 
         public PermissionService(NoNameTagConfiguration config)
         {
             _config = config;
-            _permissionCache = new Dictionary<ulong, (PermissionGroupConfig, long)>();
+            _permissionCache = new ConcurrentDictionary<ulong, (PermissionGroupConfig, long)>();
         }
 
         public PermissionGroupConfig GetPlayerPermissionGroup(IRocketPlayer player)
@@ -28,7 +28,7 @@ namespace Emqo.NoNameTag.Services
             // 检查缓存
             if (_permissionCache.TryGetValue(playerId, out var cached))
             {
-                var elapsedSeconds = (DateTime.UtcNow.Ticks - cached.timestamp) / 10000000;
+                var elapsedSeconds = (DateTime.UtcNow.Ticks - cached.timestamp) / TimeSpan.TicksPerSecond;
                 if (elapsedSeconds < CacheExpirationSeconds)
                 {
                     return cached.group;
@@ -43,27 +43,21 @@ namespace Emqo.NoNameTag.Services
 
         private PermissionGroupConfig FindHighestPriorityGroup(IRocketPlayer player)
         {
-            var matchingGroups = new List<PermissionGroupConfig>();
+            PermissionGroupConfig highest = null;
 
             foreach (var group in _config.PermissionGroups)
             {
                 if (!string.IsNullOrEmpty(group.Permission) && player.HasPermission(group.Permission))
                 {
-                    matchingGroups.Add(group);
+                    if (_config.PriorityMode == PriorityMode.FirstMatch)
+                        return group;
+
+                    if (highest == null || group.Priority > highest.Priority)
+                        highest = group;
                 }
             }
 
-            if (matchingGroups.Count == 0)
-                return null;
-
-            if (_config.PriorityMode == PriorityMode.FirstMatch)
-            {
-                return matchingGroups.First();
-            }
-            else // HighestPriority
-            {
-                return matchingGroups.OrderByDescending(g => g.Priority).First();
-            }
+            return highest;
         }
 
         public bool HasAnyPermissionGroup(IRocketPlayer player)
@@ -73,7 +67,7 @@ namespace Emqo.NoNameTag.Services
 
         public void ClearPlayerCache(ulong steamId)
         {
-            _permissionCache.Remove(steamId);
+            _permissionCache.TryRemove(steamId, out _);
         }
 
         public void ClearAllCache()

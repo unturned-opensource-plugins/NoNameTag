@@ -260,6 +260,81 @@ namespace Emqo.NoNameTag.Models
     }
 
     /// <summary>
+    /// 欢迎消息配置
+    /// </summary>
+    public class WelcomeMessageConfig
+    {
+        [XmlAttribute("enabled")]
+        public bool Enabled { get; set; } = true;
+
+        [XmlElement("Text")]
+        public string Text { get; set; } = "欢迎 {player} 加入服务器！";
+
+        [XmlElement("IconUrl")]
+        public string IconUrl { get; set; } = "";
+
+        [XmlElement("Color")]
+        public string Color { get; set; } = "white";
+
+        /// <summary>
+        /// 是否显示加入链接
+        /// </summary>
+        [XmlElement("EnableJoinLink")]
+        public bool EnableJoinLink { get; set; } = false;
+
+        [XmlElement("JoinLinkUrl")]
+        public string JoinLinkUrl { get; set; } = "";
+
+        [XmlElement("JoinLinkMessage")]
+        public string JoinLinkMessage { get; set; } = "";
+
+        /// <summary>
+        /// 离开消息是否启用
+        /// </summary>
+        [XmlElement("EnableLeaveMessage")]
+        public bool EnableLeaveMessage { get; set; } = true;
+
+        [XmlElement("LeaveText")]
+        public string LeaveText { get; set; } = "{player} 离开了服务器";
+
+        [XmlElement("LeaveIconUrl")]
+        public string LeaveIconUrl { get; set; } = "";
+    }
+
+    /// <summary>
+    /// 文本命令配置
+    /// </summary>
+    public class TextCommandConfig
+    {
+        [XmlElement("Name")]
+        public string Name { get; set; } = "";
+
+        [XmlElement("Message")]
+        public string Message { get; set; } = "";
+
+        [XmlElement("IconUrl")]
+        public string IconUrl { get; set; } = "";
+
+        [XmlElement("Color")]
+        public string Color { get; set; } = "white";
+    }
+
+    /// <summary>
+    /// 网站命令配置
+    /// </summary>
+    public class WebCommandConfig
+    {
+        [XmlElement("Name")]
+        public string Name { get; set; } = "";
+
+        [XmlElement("Url")]
+        public string Url { get; set; } = "";
+
+        [XmlElement("Description")]
+        public string Description { get; set; } = "";
+    }
+
+    /// <summary>
     /// 统一的广播配置（合并死亡消息和轮播公告）
     /// </summary>
     public class BroadcastConfig
