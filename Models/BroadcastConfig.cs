@@ -82,6 +82,12 @@ namespace Emqo.NoNameTag.Models
         [XmlElement("DelaySeconds")]
         public int DelaySeconds { get; set; } = 0;
 
+        [XmlElement("FontColor")]
+        public string FontColor { get; set; } = "";
+
+        [XmlElement("FontSize")]
+        public int FontSize { get; set; } = 0;
+
         /// <summary>
         /// 头像：Sprite ID（如 "icon_vip"）或 Emoji（如 "🛡️"）
         /// </summary>
@@ -163,6 +169,12 @@ namespace Emqo.NoNameTag.Models
         /// </summary>
         [XmlElement("Visibility")]
         public DeathMessageVisibility Visibility { get; set; } = DeathMessageVisibility.All;
+
+        [XmlElement("FontColor")]
+        public string FontColor { get; set; } = "";
+
+        [XmlElement("FontSize")]
+        public int FontSize { get; set; } = 0;
 
         [XmlElement("Format")]
         public string Format { get; set; } = "{killer} 击杀了 {victim}";
@@ -274,7 +286,16 @@ namespace Emqo.NoNameTag.Models
         public string IconUrl { get; set; } = "";
 
         [XmlElement("Color")]
-        public string Color { get; set; } = "white";
+        public string Color { get; set; } = "";
+
+        [XmlElement("FontSize")]
+        public int FontSize { get; set; } = 0;
+
+        [XmlElement("LeaveColor")]
+        public string LeaveColor { get; set; } = "";
+
+        [XmlElement("LeaveFontSize")]
+        public int LeaveFontSize { get; set; } = 0;
 
         /// <summary>
         /// 是否显示加入链接

@@ -1,5 +1,4 @@
 using Emqo.NoNameTag.Models;
-using Emqo.NoNameTag.Utilities;
 using Rocket.API;
 using System;
 using System.Collections.Concurrent;
@@ -10,7 +9,7 @@ namespace Emqo.NoNameTag.Services
     {
         private readonly NoNameTagConfiguration _config;
         private readonly ConcurrentDictionary<ulong, (PermissionGroupConfig group, long timestamp)> _permissionCache;
-        private const int CacheExpirationSeconds = Constants.PermissionCacheExpirationSeconds;
+        private const int CacheExpirationSeconds = 300;
 
         public PermissionService(NoNameTagConfiguration config)
         {
@@ -81,7 +80,8 @@ namespace Emqo.NoNameTag.Services
             {
                 return unturnedPlayer.CSteamID.m_SteamID;
             }
-            return 0;
+            // 非 UnturnedPlayer（如控制台）不缓存
+            return ulong.MaxValue;
         }
     }
 }

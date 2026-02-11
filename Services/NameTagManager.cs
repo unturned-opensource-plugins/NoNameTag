@@ -13,11 +13,11 @@ namespace Emqo.NoNameTag.Services
     public class NameTagManager : INameTagManager
     {
         private readonly NoNameTagConfiguration _config;
-        private readonly PermissionService _permissionService;
+        private readonly IPermissionService _permissionService;
         private readonly ConcurrentDictionary<ulong, PermissionGroupConfig> _playerEffects;
-        private const int MaxCacheSize = 1000;
+        private const int MaxCacheSize = Constants.MaxPlayerCacheSize;
 
-        public NameTagManager(NoNameTagConfiguration config, PermissionService permissionService)
+        public NameTagManager(NoNameTagConfiguration config, IPermissionService permissionService)
         {
             _config = config;
             _permissionService = permissionService;

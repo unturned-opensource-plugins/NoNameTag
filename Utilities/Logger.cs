@@ -24,7 +24,7 @@ namespace Emqo.NoNameTag.Utilities
     public static class PluginLogger
     {
         private static bool _debugEnabled = false;
-        private const string Prefix = "[NoNameTag] ";
+        private const string Prefix = Constants.LogPrefix;
         private static readonly System.Collections.Generic.Dictionary<LogCategory, string> CategoryPrefixes = new System.Collections.Generic.Dictionary<LogCategory, string>
         {
             { LogCategory.Plugin, "[PLUGIN] " },

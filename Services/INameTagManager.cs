@@ -33,5 +33,10 @@ namespace Emqo.NoNameTag.Services
         /// 获取玩家效果
         /// </summary>
         PermissionGroupConfig GetPlayerEffect(ulong steamId);
+
+        /// <summary>
+        /// 清除所有缓存
+        /// </summary>
+        void ClearAll();
     }
 }

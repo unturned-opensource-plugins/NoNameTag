@@ -23,9 +23,6 @@ namespace Emqo.NoNameTag
 
         public PriorityMode PriorityMode { get; set; } = PriorityMode.HighestPriority;
 
-        [XmlElement("AvatarSettings")]
-        public AvatarConfig AvatarSettings { get; set; } = new AvatarConfig();
-
         [XmlArray("PermissionGroups")]
         [XmlArrayItem("PermissionGroup")]
         public List<PermissionGroupConfig> PermissionGroups { get; set; } = new List<PermissionGroupConfig>();
@@ -48,7 +45,7 @@ namespace Emqo.NoNameTag
         [XmlArrayItem("WebCommand")]
         public List<WebCommandConfig> WebCommands { get; set; } = new List<WebCommandConfig>();
 
-        private BroadcastConfig _broadcastCache;
+        private volatile BroadcastConfig _broadcastCache;
 
         /// <summary>
         /// 统一的广播配置（用于 BroadcastService）
@@ -58,15 +55,17 @@ namespace Emqo.NoNameTag
         {
             get
             {
-                if (_broadcastCache == null)
+                var cache = _broadcastCache;
+                if (cache == null)
                 {
-                    _broadcastCache = new BroadcastConfig
+                    cache = new BroadcastConfig
                     {
                         DeathMessage = DeathMessage,
                         BroadcastGroups = BroadcastGroups
                     };
+                    _broadcastCache = cache;
                 }
-                return _broadcastCache;
+                return cache;
             }
         }
 
@@ -85,8 +84,6 @@ namespace Emqo.NoNameTag
             DefaultNameColor = "#FFFFFF";
             ApplyToChatMessages = true;
             PriorityMode = PriorityMode.HighestPriority;
-
-            AvatarSettings = new AvatarConfig();
 
             PermissionGroups = new List<PermissionGroupConfig>
             {

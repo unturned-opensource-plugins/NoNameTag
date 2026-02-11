@@ -1,3 +1,4 @@
+using System;
 using Emqo.NoNameTag.Models;
 using UnityEngine;
 using Logger = Emqo.NoNameTag.Utilities.PluginLogger;
@@ -10,32 +11,44 @@ namespace Emqo.NoNameTag.Utilities
     public static class NameFormatter
     {
         /// <summary>
-        /// 格式化带颜色的名称标签
+        /// 用颜色和大小包装文本（size=0 表示不设置大小）
+        /// </summary>
+        public static string WrapWithStyle(string text, string hexColor, int fontSize = 0)
+        {
+            if (string.IsNullOrEmpty(text))
+                return "";
+
+            var result = FormatColorTag(hexColor, text);
+
+            if (fontSize > 0)
+                result = $"<size={fontSize}>{result}</size>";
+
+            return result;
+        }
+
+        /// <summary>
+        /// 格式化带颜色和大小的名称标签
         /// </summary>
         public static string FormatColoredName(string playerName, DisplayEffectConfig effect)
         {
             if (effect == null)
                 return playerName;
 
-            var prefixHex = GetHexColor(effect.PrefixColor);
-            var nameHex = GetHexColor(effect.NameColor);
-            var suffixHex = GetHexColor(effect.SuffixColor);
-
             var prefixPart = !string.IsNullOrEmpty(effect.Prefix)
-                ? string.Format(Constants.ColorTagFormat, prefixHex, effect.Prefix)
+                ? WrapWithStyle(effect.Prefix, effect.PrefixColor, effect.PrefixFontSize)
                 : "";
-            var namePart = string.Format(Constants.ColorTagFormat, nameHex, playerName);
+            var namePart = WrapWithStyle(playerName, effect.NameColor, effect.NameFontSize);
             var suffixPart = !string.IsNullOrEmpty(effect.Suffix)
-                ? string.Format(Constants.ColorTagFormat, suffixHex, effect.Suffix)
+                ? WrapWithStyle(effect.Suffix, effect.SuffixColor, effect.SuffixFontSize)
                 : "";
 
             return $"{prefixPart}{namePart}{suffixPart}";
         }
 
         /// <summary>
-        /// 格式化带头像的名称标签（用于聊天消息）
+        /// 格式化带颜色的名称标签（用于聊天消息）
         /// </summary>
-        public static string FormatNameWithAvatar(string playerName, DisplayEffectConfig effect, AvatarPosition position)
+        public static string FormatNameWithAvatar(string playerName, DisplayEffectConfig effect)
         {
             return FormatColoredName(playerName, effect);
         }
@@ -66,6 +79,37 @@ namespace Emqo.NoNameTag.Utilities
         }
 
         /// <summary>
+        /// 判断是否为 hex 颜色（纯十六进制字符）
+        /// </summary>
+        private static bool IsHexColor(string color)
+        {
+            if (string.IsNullOrEmpty(color)) return false;
+            var trimmed = color.TrimStart('#');
+            if (trimmed.Length != 6) return false;
+            foreach (var c in trimmed)
+            {
+                if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+                    return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// 生成 color 标签（兼容 hex 和 Unity 颜色名）
+        /// </summary>
+        private static string FormatColorTag(string colorValue, string text)
+        {
+            if (string.IsNullOrEmpty(colorValue))
+                return string.Format(Constants.ColorTagFormat, Constants.DefaultColor, text);
+
+            if (IsHexColor(colorValue))
+                return string.Format(Constants.ColorTagFormat, GetHexColor(colorValue), text);
+
+            // Unity 颜色名（white, red, yellow 等），不加 #
+            return $"<color={colorValue}>{text}</color>";
+        }
+
+        /// <summary>
         /// 解析十六进制颜色为 Unity Color
         /// </summary>
         public static Color ParseColor(string hex)
@@ -85,9 +129,9 @@ namespace Emqo.NoNameTag.Utilities
                 byte b = byte.Parse(hex.Substring(4, 2), System.Globalization.NumberStyles.HexNumber);
                 return new Color32(r, g, b, 255);
             }
-            catch
+            catch (Exception ex)
             {
-                Logger.Warning($"Failed to parse color: {hex}");
+                Logger.Warning($"Failed to parse color: {hex} - {ex.Message}");
                 return Color.white;
             }
         }

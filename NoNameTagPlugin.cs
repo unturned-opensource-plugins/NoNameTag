@@ -1,4 +1,3 @@
-using Emqo.NoNameTag.Models;
 using Emqo.NoNameTag.Services;
 using Emqo.NoNameTag.Utilities;
 using Rocket.Core.Plugins;
@@ -17,9 +16,9 @@ namespace Emqo.NoNameTag
     {
         public static NoNameTagPlugin Instance { get; private set; }
 
-        public PermissionService PermissionService { get; private set; }
-        public NameTagManager NameTagManager { get; private set; }
-        public BroadcastService BroadcastService { get; private set; }
+        public IPermissionService PermissionService { get; private set; }
+        public INameTagManager NameTagManager { get; private set; }
+        public IBroadcastService BroadcastService { get; private set; }
 
         protected override void Load()
         {
@@ -185,13 +184,56 @@ namespace Emqo.NoNameTag
 
             try
             {
-                var (formattedMessage, avatarUrl) = BuildFormattedChatMessage(player, message);
+                var (formattedMessage, avatarUrl) = BuildFormattedChatMessage(player, message, chatMode);
                 if (string.IsNullOrEmpty(formattedMessage)) return;
 
                 cancel = true;
-                Logger.Debug($"Chat message - Player: {player.DisplayName}, SteamID: {player.CSteamID.m_SteamID}, AvatarUrl: {avatarUrl ?? "null"}, Message: {formattedMessage}", LogCategory.Plugin);
-                // 参数顺序：message, color, fromPlayer, toPlayer, chatMode, iconUrl, useRichText
-                ChatManager.serverSendMessage(formattedMessage, Color.white, player.SteamPlayer(), null, chatMode, avatarUrl, true);
+                Logger.Debug($"Chat message - Player: {player.DisplayName}, SteamID: {player.CSteamID.m_SteamID}, ChatMode: {chatMode}, Message: {formattedMessage}", LogCategory.Plugin);
+
+                // 根据聊天模式决定发送范围
+                switch (chatMode)
+                {
+                    case EChatMode.LOCAL:
+                        // 区域聊天：只发给附近玩家
+                        foreach (var client in Provider.clients)
+                        {
+                            if (client?.player == null) continue;
+                            var distance = (client.player.transform.position - player.Player.transform.position).sqrMagnitude;
+                            // Unturned 区域聊天默认范围约 64m（sqrMagnitude = 4096）
+                            if (distance <= 4096f)
+                            {
+                                ChatManager.serverSendMessage(formattedMessage, Color.white, player.SteamPlayer(), client, EChatMode.LOCAL, avatarUrl, true);
+                            }
+                        }
+                        break;
+
+                    case EChatMode.GROUP:
+                        // 组聊天：只发给同组玩家
+                        var senderGroupId = player.Player.quests.groupID;
+                        if (senderGroupId == CSteamID.Nil)
+                        {
+                            // 不在组里，只发给自己
+                            ChatManager.serverSendMessage(formattedMessage, Color.white, player.SteamPlayer(), player.SteamPlayer(), EChatMode.GROUP, avatarUrl, true);
+                        }
+                        else
+                        {
+                            foreach (var client in Provider.clients)
+                            {
+                                if (client?.player == null) continue;
+                                var clientPlayer = UnturnedPlayer.FromSteamPlayer(client);
+                                if (clientPlayer?.Player?.quests?.groupID == senderGroupId)
+                                {
+                                    ChatManager.serverSendMessage(formattedMessage, Color.white, player.SteamPlayer(), client, EChatMode.GROUP, avatarUrl, true);
+                                }
+                            }
+                        }
+                        break;
+
+                    default:
+                        // GLOBAL / SAY：发给所有人
+                        ChatManager.serverSendMessage(formattedMessage, Color.white, player.SteamPlayer(), null, chatMode, avatarUrl, true);
+                        break;
+                }
             }
             catch (Exception ex)
             {
@@ -206,25 +248,31 @@ namespace Emqo.NoNameTag
                 && player != null;
         }
 
-        private (string message, string avatarUrl) BuildFormattedChatMessage(UnturnedPlayer player, string message)
+        private (string message, string avatarUrl) BuildFormattedChatMessage(UnturnedPlayer player, string message, EChatMode chatMode)
         {
             var group = NameTagManager.GetPlayerEffect(player.CSteamID.m_SteamID);
             if (group?.DisplayEffect == null) return (null, null);
 
             var formattedName = NameFormatter.FormatNameWithAvatar(
                 player.DisplayName,
-                group.DisplayEffect,
-                AvatarPosition.Left
+                group.DisplayEffect
             );
 
             // 不设置 iconUrl，让 Unturned 自动显示玩家的 Steam 头像
             string avatarUrl = null;
 
-            // 构建最终消息
-            string finalMessage = $"{formattedName}: {message}";
+            // 过滤玩家输入中的富文本标签，防止 Rich Text 注入
+            var safeMessage = message.Replace("<", "").Replace(">", "").Replace("{", "").Replace("}", "");
 
-            // 转换富文本格式：{ 和 } 转换为 < 和 >
-            finalMessage = finalMessage.Replace("{", "<").Replace("}", ">");
+            // 根据聊天模式添加 [A]/[G] 前缀
+            string modePrefix = "";
+            if (chatMode == EChatMode.LOCAL)
+                modePrefix = "[A] ";
+            else if (chatMode == EChatMode.GROUP)
+                modePrefix = "[G] ";
+
+            // 构建最终消息（仅对格式化名称部分转换富文本）
+            string finalMessage = $"{modePrefix}{formattedName}: {safeMessage}";
 
             return (finalMessage, avatarUrl);
         }

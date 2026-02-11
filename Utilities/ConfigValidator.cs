@@ -135,16 +135,6 @@ namespace Emqo.NoNameTag.Utilities
                 return false;
             }
 
-            // 验证头像配置
-            if (config.AvatarSettings != null)
-            {
-                if (config.AvatarSettings.ChatAvatarSize <= 0 || config.AvatarSettings.ChatAvatarSize > 128)
-                {
-                    error = $"ChatAvatarSize must be between 1 and 128. Current: {config.AvatarSettings.ChatAvatarSize}";
-                    return false;
-                }
-            }
-
             if (config.PermissionGroups != null)
             {
                 for (int i = 0; i < config.PermissionGroups.Count; i++)

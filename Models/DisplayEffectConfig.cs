@@ -10,14 +10,23 @@ namespace Emqo.NoNameTag.Models
         [XmlElement("PrefixColor")]
         public string PrefixColor { get; set; } = "#FFFFFF";
 
+        [XmlElement("PrefixFontSize")]
+        public int PrefixFontSize { get; set; } = 0;
+
         [XmlElement("NameColor")]
         public string NameColor { get; set; } = "#FFFFFF";
+
+        [XmlElement("NameFontSize")]
+        public int NameFontSize { get; set; } = 0;
 
         [XmlElement("Suffix")]
         public string Suffix { get; set; } = "";
 
         [XmlElement("SuffixColor")]
         public string SuffixColor { get; set; } = "#FFFFFF";
+
+        [XmlElement("SuffixFontSize")]
+        public int SuffixFontSize { get; set; } = 0;
 
         public DisplayEffectConfig()
         {
