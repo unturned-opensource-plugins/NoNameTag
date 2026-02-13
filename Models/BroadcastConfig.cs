@@ -263,6 +263,9 @@ namespace Emqo.NoNameTag.Models
         [XmlElement("KillFormat")]
         public string KillFormat { get; set; } = "{victim} 被管理员处决";
 
+        [XmlElement("HeadshotTag")]
+        public string HeadshotTag { get; set; } = " [爆头]";
+
         [XmlElement("DefaultFormat")]
         public string DefaultFormat { get; set; } = "{victim} 死亡了";
 

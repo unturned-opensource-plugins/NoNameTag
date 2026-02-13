@@ -4,7 +4,6 @@ using Rocket.Unturned.Player;
 using SDG.Unturned;
 using Steamworks;
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 using Logger = Emqo.NoNameTag.Utilities.PluginLogger;
 
@@ -15,6 +14,9 @@ namespace Emqo.NoNameTag.Services
     /// </summary>
     internal class DeathMessageService
     {
+        private const string DefaultHeadshotTag = " [爆头]";
+        private const string UnknownWeaponText = "未知武器";
+        private const string UnknownDistanceText = "-";
         private readonly NoNameTagConfiguration _config;
         private readonly INameTagManager _nameTagManager;
 
@@ -59,7 +61,7 @@ namespace Emqo.NoNameTag.Services
                     }
                 }
 
-                var message = FormatDeathMessage(victim, killer, cause);
+                var message = FormatDeathMessage(victim, killer, cause, limb);
                 if (!string.IsNullOrEmpty(message))
                 {
                     BroadcastDeathMessage(message, victim, killer);
@@ -71,7 +73,7 @@ namespace Emqo.NoNameTag.Services
             }
         }
 
-        private string FormatDeathMessage(UnturnedPlayer victim, UnturnedPlayer killer, EDeathCause cause)
+        private string FormatDeathMessage(UnturnedPlayer victim, UnturnedPlayer killer, EDeathCause cause, ELimb limb)
         {
             if (victim == null)
                 return null;
@@ -95,14 +97,38 @@ namespace Emqo.NoNameTag.Services
                 if (isSelfKill)
                     format = deathConfig.SelfKillFormat;
                 else if (isPlayerKill)
-                    format = deathConfig.Format;
+                    format = GetPlayerKillFormatByCause(cause, deathConfig);
                 else
                     format = GetFormatByCause(cause, deathConfig);
 
+                if (string.IsNullOrWhiteSpace(format))
+                    format = deathConfig.DefaultFormat;
+
                 var victimName = FormatPlayerName(victim);
                 var killerName = killer != null ? FormatPlayerName(killer) : "";
+                var isLikelyPlayerKill = isPlayerKill || IsPlayerKillCause(cause);
+                var isHeadshot = isLikelyPlayerKill && IsHeadshotLimb(limb);
+                var weaponName = GetWeaponName(killer, cause, isLikelyPlayerKill);
+                var killDistance = GetKillDistance(victim, killer, isLikelyPlayerKill);
+                var hasWeaponPlaceholder = format.IndexOf("{weapon}", StringComparison.OrdinalIgnoreCase) >= 0;
+                var hasDistancePlaceholder = format.IndexOf("{distance}", StringComparison.OrdinalIgnoreCase) >= 0;
 
-                var result = format.Replace("{victim}", victimName).Replace("{killer}", killerName);
+                var result = format
+                    .Replace("{victim}", victimName)
+                    .Replace("{killer}", killerName)
+                    .Replace("{weapon}", weaponName)
+                    .Replace("{distance}", killDistance);
+
+                if (isLikelyPlayerKill)
+                    result = AppendKillDetailsIfNeeded(result, weaponName, killDistance, hasWeaponPlaceholder, hasDistancePlaceholder);
+
+                if (isHeadshot)
+                {
+                    var headshotTag = string.IsNullOrWhiteSpace(deathConfig.HeadshotTag)
+                        ? DefaultHeadshotTag
+                        : deathConfig.HeadshotTag;
+                    result = $"{result}{headshotTag}";
+                }
 
                 // 应用死亡消息字体颜色和大小
                 if (!string.IsNullOrEmpty(deathConfig.FontColor))
@@ -116,6 +142,131 @@ namespace Emqo.NoNameTag.Services
             {
                 Logger.Exception(ex, "Error in FormatDeathMessage", LogCategory.DeathMessage);
                 return null;
+            }
+        }
+
+        private string GetPlayerKillFormatByCause(EDeathCause cause, DeathMessageConfig config)
+        {
+            switch (cause)
+            {
+                case EDeathCause.GUN: return config.GunFormat;
+                case EDeathCause.MELEE: return config.MeleeFormat;
+                case EDeathCause.PUNCH: return config.PunchFormat;
+                case EDeathCause.GRENADE: return config.GrenadeFormat;
+                case EDeathCause.SHRED: return config.ShredFormat;
+                case EDeathCause.LANDMINE: return config.LandmineFormat;
+                case EDeathCause.ARENA: return config.ArenaFormat;
+                case EDeathCause.MISSILE: return config.MissileFormat;
+                case EDeathCause.CHARGE: return config.ChargeFormat;
+                case EDeathCause.SPLASH: return config.SplashFormat;
+                case EDeathCause.SENTRY: return config.SentryFormat;
+                case EDeathCause.VEHICLE:
+                case EDeathCause.ROADKILL: return config.VehicleFormat;
+                case EDeathCause.KILL: return config.KillFormat;
+                default: return config.Format;
+            }
+        }
+
+        private string GetWeaponName(UnturnedPlayer killer, EDeathCause cause, bool isLikelyPlayerKill)
+        {
+            if (!isLikelyPlayerKill || killer == null || killer.Player == null)
+                return UnknownWeaponText;
+
+            try
+            {
+                var equipment = killer.Player.equipment;
+                var itemAsset = equipment?.asset as ItemAsset;
+                if (itemAsset != null && !string.IsNullOrWhiteSpace(itemAsset.itemName))
+                    return itemAsset.itemName;
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Could not resolve weapon name: {ex.Message}", LogCategory.DeathMessage);
+            }
+
+            return GetWeaponNameByCause(cause);
+        }
+
+        private string GetWeaponNameByCause(EDeathCause cause)
+        {
+            switch (cause)
+            {
+                case EDeathCause.GUN: return "枪械";
+                case EDeathCause.MELEE: return "近战";
+                case EDeathCause.PUNCH: return "拳击";
+                case EDeathCause.GRENADE: return "手雷";
+                case EDeathCause.MISSILE: return "导弹";
+                case EDeathCause.CHARGE: return "炸药";
+                case EDeathCause.LANDMINE: return "地雷";
+                case EDeathCause.SENTRY: return "哨兵";
+                case EDeathCause.VEHICLE:
+                case EDeathCause.ROADKILL: return "载具";
+                default: return UnknownWeaponText;
+            }
+        }
+
+        private string GetKillDistance(UnturnedPlayer victim, UnturnedPlayer killer, bool isLikelyPlayerKill)
+        {
+            if (!isLikelyPlayerKill || victim == null || killer == null || victim.Player == null || killer.Player == null)
+                return UnknownDistanceText;
+
+            try
+            {
+                var distance = Vector3.Distance(victim.Player.transform.position, killer.Player.transform.position);
+                if (float.IsNaN(distance) || float.IsInfinity(distance))
+                    return UnknownDistanceText;
+
+                return $"{Mathf.RoundToInt(distance)}m";
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Could not resolve kill distance: {ex.Message}", LogCategory.DeathMessage);
+                return UnknownDistanceText;
+            }
+        }
+
+        private string AppendKillDetailsIfNeeded(string baseMessage, string weaponName, string killDistance, bool hasWeaponPlaceholder, bool hasDistancePlaceholder)
+        {
+            if (hasWeaponPlaceholder && hasDistancePlaceholder)
+                return baseMessage;
+
+            if (!hasWeaponPlaceholder && !hasDistancePlaceholder)
+                return $"{baseMessage} [{weaponName} | {killDistance}]";
+
+            if (!hasWeaponPlaceholder)
+                return $"{baseMessage} [武器:{weaponName}]";
+
+            return $"{baseMessage} [距离:{killDistance}]";
+        }
+
+        private bool IsHeadshotLimb(ELimb limb)
+        {
+            var limbName = limb.ToString();
+            return limbName.Equals("SKULL", StringComparison.OrdinalIgnoreCase)
+                || limbName.Equals("HEAD", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool IsPlayerKillCause(EDeathCause cause)
+        {
+            switch (cause)
+            {
+                case EDeathCause.GUN:
+                case EDeathCause.MELEE:
+                case EDeathCause.PUNCH:
+                case EDeathCause.GRENADE:
+                case EDeathCause.SHRED:
+                case EDeathCause.LANDMINE:
+                case EDeathCause.ARENA:
+                case EDeathCause.MISSILE:
+                case EDeathCause.CHARGE:
+                case EDeathCause.SPLASH:
+                case EDeathCause.SENTRY:
+                case EDeathCause.VEHICLE:
+                case EDeathCause.ROADKILL:
+                case EDeathCause.KILL:
+                    return true;
+                default:
+                    return false;
             }
         }
 
