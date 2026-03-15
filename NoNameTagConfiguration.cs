@@ -37,6 +37,9 @@ namespace Emqo.NoNameTag
         [XmlElement("WelcomeMessage")]
         public WelcomeMessageConfig WelcomeMessage { get; set; } = new WelcomeMessageConfig();
 
+        [XmlElement("StatsSettings")]
+        public StatsSettingsConfig StatsSettings { get; set; } = new StatsSettingsConfig();
+
         [XmlArray("TextCommands")]
         [XmlArrayItem("TextCommand")]
         public List<TextCommandConfig> TextCommands { get; set; } = new List<TextCommandConfig>();
@@ -124,6 +127,8 @@ namespace Emqo.NoNameTag
                 IconUrl = "",
                 EnableJoinLink = false
             };
+
+            StatsSettings = new StatsSettingsConfig();
 
             TextCommands = new List<TextCommandConfig>
             {

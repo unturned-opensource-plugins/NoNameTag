@@ -87,4 +87,16 @@
       </Messages>
     </BroadcastGroup>
   </BroadcastGroups>
+
+  <StatsSettings>
+    <Enabled>true</Enabled>
+    <DatabaseRelativePath>Data/nonametag.litedb</DatabaseRelativePath>
+    <CommandTimeoutSeconds>5</CommandTimeoutSeconds>
+    <ShowInFormattedNames>true</ShowInFormattedNames>
+    <DisplayFormat> [KS:{streak} K:{kills} D:{deaths}]</DisplayFormat>
+    <DisplayColor>#C0C0C0</DisplayColor>
+    <DisplayFontSize>0</DisplayFontSize>
+    <BleedHitRetentionSeconds>15</BleedHitRetentionSeconds>
+    <BleedSourceRetentionSeconds>180</BleedSourceRetentionSeconds>
+  </StatsSettings>
 </NoNameTagConfiguration>

@@ -16,7 +16,7 @@ namespace Emqo.NoNameTag.Commands
 
         public string Help => "Manage NoNameTag plugin settings";
 
-        public string Syntax => "/nametag <reload|refresh|check|broadcasts> [args]";
+        public string Syntax => "/nametag <reload|refresh|check|broadcasts|stats> [args]";
 
         public List<string> Aliases => new List<string> { "nt" };
 
@@ -46,6 +46,9 @@ namespace Emqo.NoNameTag.Commands
                 case "broadcasts":
                     ExecuteBroadcasts(caller, command);
                     break;
+                case "stats":
+                    ExecuteStats(caller, command);
+                    break;
                 default:
                     SendMessage(caller, $"Unknown subcommand: {subCommand}", Color.red);
                     ShowHelp(caller);
@@ -61,6 +64,7 @@ namespace Emqo.NoNameTag.Commands
             SendMessage(caller, "  refresh [player] - Refresh display effects for all/one player", Color.white);
             SendMessage(caller, "  check [player] - Check player's display effect", Color.white);
             SendMessage(caller, "  broadcasts - List all broadcast groups and their status", Color.white);
+            SendMessage(caller, "  stats [player] - Show player's kill, death and streak stats", Color.white);
         }
 
         private void ExecuteReload(IRocketPlayer caller)
@@ -82,8 +86,9 @@ namespace Emqo.NoNameTag.Commands
         {
             if (command.Length < 2)
             {
+                NoNameTagPlugin.Instance.PermissionService?.ClearAllCache();
                 NoNameTagPlugin.Instance.NameTagManager?.RefreshAllPlayers();
-                SendMessage(caller, "All players refreshed.", Color.green);
+                SendMessage(caller, "All players refreshed and permission cache cleared.", Color.green);
                 return;
             }
 
@@ -94,37 +99,19 @@ namespace Emqo.NoNameTag.Commands
                 return;
             }
 
+            NoNameTagPlugin.Instance.PermissionService?.ClearPlayerCache(targetPlayer.CSteamID.m_SteamID);
             NoNameTagPlugin.Instance.NameTagManager?.RefreshPlayer(targetPlayer);
-            SendMessage(caller, $"Refreshed display for {targetPlayer.DisplayName}.", Color.green);
+            SendMessage(caller, $"Refreshed display for {targetPlayer.DisplayName} and cleared permission cache.", Color.green);
         }
 
         private void ExecuteCheck(IRocketPlayer caller, string[] command)
         {
-            UnturnedPlayer targetPlayer;
-
-            if (command.Length < 2)
-            {
-                if (caller is UnturnedPlayer unturnedCaller)
-                {
-                    targetPlayer = unturnedCaller;
-                }
-                else
-                {
-                    SendMessage(caller, "Please specify a player name.", Color.red);
-                    return;
-                }
-            }
-            else
-            {
-                targetPlayer = UnturnedPlayer.FromName(command[1]);
-                if (targetPlayer == null)
-                {
-                    SendMessage(caller, $"Player '{command[1]}' not found.", Color.red);
-                    return;
-                }
-            }
+            var targetPlayer = ResolveTargetPlayer(caller, command);
+            if (targetPlayer == null)
+                return;
 
             var group = NoNameTagPlugin.Instance.NameTagManager?.GetPlayerEffect(targetPlayer.CSteamID.m_SteamID);
+            var stats = NoNameTagPlugin.Instance.PlayerStatsService?.GetPlayerStats(targetPlayer.CSteamID.m_SteamID);
 
             if (group == null)
             {
@@ -136,6 +123,11 @@ namespace Emqo.NoNameTag.Commands
                 SendMessage(caller, $"Player: {targetPlayer.DisplayName}", Color.white);
                 SendMessage(caller, $"Permission: {group.Permission} (Priority: {group.Priority})", Color.white);
                 SendMessage(caller, $"Prefix: {effect.Prefix} | Name Color: {effect.NameColor} | Suffix: {effect.Suffix}", Color.white);
+            }
+
+            if (stats != null)
+            {
+                SendMessage(caller, $"Stats: KS {stats.CurrentKillstreak} | K {stats.TotalKills} | D {stats.TotalDeaths}", Color.white);
             }
         }
 
@@ -158,6 +150,46 @@ namespace Emqo.NoNameTag.Commands
             }
 
             SendMessage(caller, "Use /nametag reload to restart all broadcasts.", Color.yellow);
+        }
+
+        private void ExecuteStats(IRocketPlayer caller, string[] command)
+        {
+            var targetPlayer = ResolveTargetPlayer(caller, command);
+            if (targetPlayer == null)
+                return;
+
+            var stats = NoNameTagPlugin.Instance.PlayerStatsService?.GetPlayerStats(targetPlayer.CSteamID.m_SteamID);
+            if (stats == null)
+            {
+                SendMessage(caller, $"No stats found for {targetPlayer.DisplayName}.", Color.yellow);
+                return;
+            }
+
+            SendMessage(caller, $"Player: {targetPlayer.DisplayName}", Color.white);
+            SendMessage(caller, $"Current Killstreak: {stats.CurrentKillstreak}", Color.white);
+            SendMessage(caller, $"Total Kills: {stats.TotalKills}", Color.white);
+            SendMessage(caller, $"Total Deaths: {stats.TotalDeaths}", Color.white);
+        }
+
+        private UnturnedPlayer ResolveTargetPlayer(IRocketPlayer caller, string[] command)
+        {
+            if (command.Length < 2)
+            {
+                if (caller is UnturnedPlayer unturnedCaller)
+                    return unturnedCaller;
+
+                SendMessage(caller, "Please specify a player name.", Color.red);
+                return null;
+            }
+
+            var targetPlayer = UnturnedPlayer.FromName(command[1]);
+            if (targetPlayer == null)
+            {
+                SendMessage(caller, $"Player '{command[1]}' not found.", Color.red);
+                return null;
+            }
+
+            return targetPlayer;
         }
 
         private void SendMessage(IRocketPlayer caller, string message, Color color)

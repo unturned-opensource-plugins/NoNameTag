@@ -19,6 +19,8 @@ namespace Emqo.NoNameTag
         public IPermissionService PermissionService { get; private set; }
         public INameTagManager NameTagManager { get; private set; }
         public IBroadcastService BroadcastService { get; private set; }
+        public IPlayerStatsService PlayerStatsService { get; private set; }
+        public IDamageAttributionService DamageAttributionService { get; private set; }
 
         protected override void Load()
         {
@@ -51,6 +53,8 @@ namespace Emqo.NoNameTag
             {
                 UnregisterEventHandlers();
                 BroadcastService?.Dispose();
+                DamageAttributionService?.ClearAll();
+                PlayerStatsService?.Dispose();
                 NameTagManager?.ClearAll();
                 PermissionService?.ClearAllCache();
                 UnityMainThreadDispatcher.DestroyInstance();
@@ -68,6 +72,9 @@ namespace Emqo.NoNameTag
             U.Events.OnPlayerConnected += OnPlayerConnected;
             U.Events.OnPlayerDisconnected += OnPlayerDisconnected;
             UnturnedPlayerEvents.OnPlayerChatted += OnPlayerChatted;
+            DamageTool.damagePlayerRequested += OnDamagePlayerRequested;
+            PlayerLife.OnTellBleeding_Global += OnPlayerBleedingUpdated;
+            PlayerLife.OnRevived_Global += OnPlayerRevived;
             PlayerLife.onPlayerDied += OnPlayerDied;
         }
 
@@ -76,6 +83,9 @@ namespace Emqo.NoNameTag
             U.Events.OnPlayerConnected -= OnPlayerConnected;
             U.Events.OnPlayerDisconnected -= OnPlayerDisconnected;
             UnturnedPlayerEvents.OnPlayerChatted -= OnPlayerChatted;
+            DamageTool.damagePlayerRequested -= OnDamagePlayerRequested;
+            PlayerLife.OnTellBleeding_Global -= OnPlayerBleedingUpdated;
+            PlayerLife.OnRevived_Global -= OnPlayerRevived;
             PlayerLife.onPlayerDied -= OnPlayerDied;
         }
 
@@ -87,8 +97,10 @@ namespace Emqo.NoNameTag
         private void InitializeServices()
         {
             PermissionService = new PermissionService(Configuration.Instance);
+            PlayerStatsService = new PlayerStatsService(Configuration.Instance.StatsSettings);
+            DamageAttributionService = new DamageAttributionService(Configuration.Instance.StatsSettings);
             NameTagManager = new NameTagManager(Configuration.Instance, PermissionService);
-            BroadcastService = new BroadcastService(Configuration.Instance, NameTagManager);
+            BroadcastService = new BroadcastService(Configuration.Instance, NameTagManager, DamageAttributionService);
 
             Logger.Debug("All services initialized");
         }
@@ -100,6 +112,8 @@ namespace Emqo.NoNameTag
                 Logger.DebugEnabled = Configuration.Instance.DebugMode;
                 Configuration.Instance.ClearCache();
                 BroadcastService?.Dispose();
+                DamageAttributionService?.ClearAll();
+                PlayerStatsService?.Dispose();
                 NameTagManager?.ClearAll();
                 PermissionService?.ClearAllCache();
                 InitializeServices();
@@ -138,6 +152,7 @@ namespace Emqo.NoNameTag
 
         private void ApplyPlayerEffects(UnturnedPlayer player)
         {
+            PlayerStatsService?.EnsurePlayer(player.CSteamID.m_SteamID);
             NameTagManager.ApplyDisplayEffect(player);
             BroadcastService?.SendWelcomeMessage(player);
         }
@@ -165,6 +180,7 @@ namespace Emqo.NoNameTag
         private void CleanupPlayerData(UnturnedPlayer player)
         {
             BroadcastService?.SendLeaveMessage(player);
+            DamageAttributionService?.ClearVictim(player.CSteamID.m_SteamID);
             NameTagManager.RemoveDisplayEffect(player);
             PermissionService?.ClearPlayerCache(player.CSteamID.m_SteamID);
         }
@@ -251,11 +267,10 @@ namespace Emqo.NoNameTag
         private (string message, string avatarUrl) BuildFormattedChatMessage(UnturnedPlayer player, string message, EChatMode chatMode)
         {
             var group = NameTagManager.GetPlayerEffect(player.CSteamID.m_SteamID);
-            if (group?.DisplayEffect == null) return (null, null);
-
-            var formattedName = NameFormatter.FormatNameWithAvatar(
+            var formattedName = NameFormatter.FormatPlayerName(
                 player.DisplayName,
-                group.DisplayEffect
+                player.CSteamID.m_SteamID,
+                group?.DisplayEffect
             );
 
             // 不设置 iconUrl，让 Unturned 自动显示玩家的 Steam 头像
@@ -283,11 +298,246 @@ namespace Emqo.NoNameTag
 
             try
             {
+                var victimSteamId = sender?.channel?.owner?.playerID.steamID.m_SteamID ?? 0UL;
+                var resolvedKillerSteamId = ResolveKillerSteamId(victimSteamId, cause, instigator);
+
+                if (victimSteamId != 0)
+                {
+                    PlayerStatsService?.RecordPlayerDeath(victimSteamId, resolvedKillerSteamId ?? 0);
+                }
+
                 BroadcastService?.HandlePlayerDeath(sender, cause, limb, instigator);
+
+                if (victimSteamId != 0)
+                {
+                    DamageAttributionService?.ClearVictim(victimSteamId);
+                }
             }
             catch (Exception ex)
             {
                 Logger.Exception(ex, "Error handling player death");
+            }
+        }
+
+        private void OnDamagePlayerRequested(ref DamagePlayerParameters parameters, ref bool shouldAllow)
+        {
+            if (!Configuration.Instance.Enabled)
+                return;
+
+            if (!shouldAllow)
+                return;
+
+            try
+            {
+                var victim = parameters.player;
+                if (victim == null)
+                    return;
+
+                var attackerSteamId = parameters.killer.m_SteamID;
+                var victimSteamId = victim.channel?.owner?.playerID.steamID.m_SteamID ?? 0UL;
+                var bleedingModifier = parameters.bleedingModifier;
+                if (attackerSteamId == 0 || victimSteamId == 0 || attackerSteamId == victimSteamId)
+                {
+                    return;
+                }
+
+                if (IsAttributionTrackableCause(parameters.cause))
+                {
+                    var weaponName = ResolveWeaponName(parameters, attackerSteamId);
+                    var distanceMeters = ResolveHitDistanceMeters(parameters, attackerSteamId);
+                    DamageAttributionService?.RecordAttributedHit(attackerSteamId, victimSteamId, parameters.cause, weaponName, distanceMeters);
+
+                    var isAlreadyBleeding = victim.life?.isBleeding == true;
+                    if (bleedingModifier != DamagePlayerParameters.Bleeding.Never
+                        && bleedingModifier != DamagePlayerParameters.Bleeding.Heal
+                        && IsBleedTrackableCause(parameters.cause)
+                        && (bleedingModifier == DamagePlayerParameters.Bleeding.Always || isAlreadyBleeding))
+                    {
+                        DamageAttributionService?.HandleBleedingStateChanged(victimSteamId, true);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Skipped damage attribution update: {ex.Message}", LogCategory.Plugin);
+            }
+        }
+
+        private void OnPlayerBleedingUpdated(PlayerLife playerLife)
+        {
+            if (!Configuration.Instance.Enabled || playerLife == null)
+                return;
+
+            try
+            {
+                var steamId = playerLife.channel?.owner?.playerID.steamID.m_SteamID ?? 0UL;
+                if (steamId == 0)
+                    return;
+
+                DamageAttributionService?.HandleBleedingStateChanged(steamId, playerLife.isBleeding);
+                DamageAttributionService?.ClearExpired();
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Skipped bleeding attribution update: {ex.Message}", LogCategory.Plugin);
+            }
+        }
+
+        private void OnPlayerRevived(PlayerLife playerLife)
+        {
+            var steamId = playerLife?.channel?.owner?.playerID.steamID.m_SteamID ?? 0UL;
+            if (steamId == 0)
+                return;
+
+            DamageAttributionService?.ClearVictim(steamId);
+        }
+
+        private ulong? ResolveKillerSteamId(ulong victimSteamId, EDeathCause cause, CSteamID instigator)
+        {
+            if (instigator != CSteamID.Nil && instigator.m_SteamID != 0 && instigator.m_SteamID != victimSteamId)
+            {
+                return instigator.m_SteamID;
+            }
+
+            if (cause == EDeathCause.BLEEDING
+                && DamageAttributionService != null
+                && DamageAttributionService.TryGetBleedKillerSteamId(victimSteamId, out var bleedKillerSteamId)
+                && bleedKillerSteamId != 0
+                && bleedKillerSteamId != victimSteamId)
+            {
+                return bleedKillerSteamId;
+            }
+
+            if (SupportsRecentAttribution(cause)
+                && DamageAttributionService != null
+                && DamageAttributionService.TryGetRecentKillerSteamId(victimSteamId, out var recentKillerSteamId)
+                && recentKillerSteamId != 0
+                && recentKillerSteamId != victimSteamId)
+            {
+                return recentKillerSteamId;
+            }
+
+            return null;
+        }
+
+        private static bool IsAttributionTrackableCause(EDeathCause cause)
+        {
+            switch (cause)
+            {
+                case EDeathCause.GUN:
+                case EDeathCause.MELEE:
+                case EDeathCause.PUNCH:
+                case EDeathCause.VEHICLE:
+                case EDeathCause.ROADKILL:
+                case EDeathCause.GRENADE:
+                case EDeathCause.MISSILE:
+                case EDeathCause.CHARGE:
+                case EDeathCause.SPLASH:
+                case EDeathCause.SHRED:
+                case EDeathCause.LANDMINE:
+                case EDeathCause.SENTRY:
+                case EDeathCause.KILL:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private static bool IsBleedTrackableCause(EDeathCause cause)
+        {
+            return IsAttributionTrackableCause(cause);
+        }
+
+        private static bool SupportsRecentAttribution(EDeathCause cause)
+        {
+            switch (cause)
+            {
+                case EDeathCause.GRENADE:
+                case EDeathCause.MISSILE:
+                case EDeathCause.CHARGE:
+                case EDeathCause.SPLASH:
+                case EDeathCause.LANDMINE:
+                case EDeathCause.VEHICLE:
+                case EDeathCause.ROADKILL:
+                case EDeathCause.BURNING:
+                case EDeathCause.BURNER:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private static string ResolveWeaponName(DamagePlayerParameters parameters, ulong attackerSteamId)
+        {
+            var attacker = TryResolvePlayer(attackerSteamId);
+            if (attacker?.Player?.equipment?.asset is ItemAsset itemAsset && !string.IsNullOrWhiteSpace(itemAsset.itemName))
+            {
+                return itemAsset.itemName;
+            }
+
+            return GetFallbackWeaponName(parameters.cause);
+        }
+
+        private static int? ResolveHitDistanceMeters(DamagePlayerParameters parameters, ulong attackerSteamId)
+        {
+            var attacker = TryResolvePlayer(attackerSteamId);
+            var victim = parameters.player;
+            if (attacker?.Player?.transform == null || victim?.transform == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                var distance = Vector3.Distance(attacker.Player.transform.position, victim.transform.position);
+                if (float.IsNaN(distance) || float.IsInfinity(distance))
+                {
+                    return null;
+                }
+
+                return Mathf.RoundToInt(distance);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static UnturnedPlayer TryResolvePlayer(ulong steamId)
+        {
+            if (steamId == 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                return UnturnedPlayer.FromCSteamID(new CSteamID(steamId));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string GetFallbackWeaponName(EDeathCause cause)
+        {
+            switch (cause)
+            {
+                case EDeathCause.GUN: return "枪械";
+                case EDeathCause.MELEE: return "近战";
+                case EDeathCause.PUNCH: return "拳击";
+                case EDeathCause.GRENADE: return "手雷";
+                case EDeathCause.MISSILE: return "导弹";
+                case EDeathCause.CHARGE: return "炸药";
+                case EDeathCause.LANDMINE: return "地雷";
+                case EDeathCause.SPLASH: return "爆炸";
+                case EDeathCause.SHRED: return "陷阱";
+                case EDeathCause.SENTRY: return "哨戒炮";
+                case EDeathCause.VEHICLE:
+                case EDeathCause.ROADKILL: return "载具";
+                case EDeathCause.KILL: return "管理员处决";
+                default: return null;
             }
         }
     }

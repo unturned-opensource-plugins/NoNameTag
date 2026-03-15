@@ -4,6 +4,7 @@
     <TargetFramework>net48</TargetFramework>
 	  <LangVersion>latest</LangVersion>
 	  <RootNamespace>Emqo.NoNameTag</RootNamespace>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <Version>1.0.0</Version>
   </PropertyGroup>
 
@@ -11,16 +12,26 @@
     <Compile Remove="lib\**" />
     <Compile Remove="RichMessageAnnouncer-master\**" />
     <Compile Remove="参考插件\**" />
+    <Compile Remove="artifacts\**" />
     <EmbeddedResource Remove="lib\**" />
     <EmbeddedResource Remove="RichMessageAnnouncer-master\**" />
     <EmbeddedResource Remove="参考插件\**" />
+    <EmbeddedResource Remove="artifacts\**" />
     <None Remove="lib\**" />
     <None Remove="RichMessageAnnouncer-master\**" />
     <None Remove="参考插件\**" />
+    <None Remove="artifacts\**" />
   </ItemGroup>
 
   <ItemGroup>
 	  <PackageReference Include="RestoreMonarchy.RocketRedist" Version="3.*" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="LiteDB">
+      <HintPath>Libraries\LiteDB.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
   </ItemGroup>
 
 </Project>

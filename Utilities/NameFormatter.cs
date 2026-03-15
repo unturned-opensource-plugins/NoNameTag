@@ -45,6 +45,32 @@ namespace Emqo.NoNameTag.Utilities
             return $"{prefixPart}{namePart}{suffixPart}";
         }
 
+        public static string FormatPlayerName(string playerName, ulong steamId, DisplayEffectConfig effect = null)
+        {
+            var resolvedEffect = effect ?? CreateDefaultDisplayEffect();
+            var baseName = resolvedEffect != null ? FormatColoredName(playerName, resolvedEffect) : playerName;
+            var statsSuffix = BuildStatsSuffix(steamId);
+
+            if (string.IsNullOrEmpty(statsSuffix))
+                return baseName;
+
+            return $"{baseName}{statsSuffix}";
+        }
+
+        private static DisplayEffectConfig CreateDefaultDisplayEffect()
+        {
+            var defaultNameColor = NoNameTagPlugin.Instance?.Configuration?.Instance?.DefaultNameColor;
+            if (string.IsNullOrWhiteSpace(defaultNameColor))
+                defaultNameColor = $"#{Constants.DefaultColor}";
+
+            return new DisplayEffectConfig
+            {
+                NameColor = defaultNameColor,
+                PrefixColor = defaultNameColor,
+                SuffixColor = defaultNameColor
+            };
+        }
+
         /// <summary>
         /// 格式化带颜色的名称标签（用于聊天消息）
         /// </summary>
@@ -65,6 +91,34 @@ namespace Emqo.NoNameTag.Utilities
             var suffix = effect.Suffix ?? "";
 
             return $"{prefix}{playerName}{suffix}";
+        }
+
+        private static string BuildStatsSuffix(ulong steamId)
+        {
+            var plugin = NoNameTagPlugin.Instance;
+            var settings = plugin?.Configuration?.Instance?.StatsSettings;
+            if (plugin?.PlayerStatsService == null
+                || settings == null
+                || !settings.Enabled
+                || !settings.ShowInFormattedNames
+                || string.IsNullOrWhiteSpace(settings.DisplayFormat))
+            {
+                return string.Empty;
+            }
+
+            var stats = plugin.PlayerStatsService.GetPlayerStats(steamId);
+            if (stats == null)
+                return string.Empty;
+
+            var formatted = settings.DisplayFormat
+                .Replace("{streak}", stats.CurrentKillstreak.ToString())
+                .Replace("{kills}", stats.TotalKills.ToString())
+                .Replace("{deaths}", stats.TotalDeaths.ToString());
+
+            if (string.IsNullOrWhiteSpace(settings.DisplayColor) && settings.DisplayFontSize <= 0)
+                return formatted;
+
+            return WrapWithStyle(formatted, settings.DisplayColor, settings.DisplayFontSize);
         }
 
         /// <summary>

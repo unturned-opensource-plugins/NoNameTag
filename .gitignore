@@ -61,3 +61,6 @@ _ReSharper*/
 # Claude Code
 ############################
 .claude/
+AGENTS.md
+CLAUDE.md
+.dotnet/

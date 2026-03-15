@@ -159,6 +159,49 @@ namespace Emqo.NoNameTag.Utilities
                 }
             }
 
+            if (config.StatsSettings != null && !ValidateStatsSettings(config.StatsSettings, out error))
+            {
+                error = $"StatsSettings: {error}";
+                return false;
+            }
+
+            return true;
+        }
+
+        public static bool ValidateStatsSettings(StatsSettingsConfig settings, out string error)
+        {
+            error = null;
+
+            if (settings == null)
+            {
+                error = "StatsSettings cannot be null";
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(settings.DisplayColor) && !ValidateHexColor(settings.DisplayColor, out error))
+            {
+                error = $"DisplayColor: {error}";
+                return false;
+            }
+
+            if (settings.CommandTimeoutSeconds <= 0)
+            {
+                error = "CommandTimeoutSeconds must be greater than 0";
+                return false;
+            }
+
+            if (settings.BleedHitRetentionSeconds <= 0)
+            {
+                error = "BleedHitRetentionSeconds must be greater than 0";
+                return false;
+            }
+
+            if (settings.BleedSourceRetentionSeconds <= 0)
+            {
+                error = "BleedSourceRetentionSeconds must be greater than 0";
+                return false;
+            }
+
             return true;
         }
 

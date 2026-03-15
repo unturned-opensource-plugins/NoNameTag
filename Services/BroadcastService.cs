@@ -31,9 +31,12 @@ namespace Emqo.NoNameTag.Services
         private readonly WelcomeMessageService _welcomeMessageService;
         private bool _disposed;
 
-        public BroadcastService(NoNameTagConfiguration config, INameTagManager nameTagManager)
+        public BroadcastService(
+            NoNameTagConfiguration config,
+            INameTagManager nameTagManager,
+            IDamageAttributionService damageAttributionService)
         {
-            _deathMessageService = new DeathMessageService(config, nameTagManager);
+            _deathMessageService = new DeathMessageService(config, nameTagManager, damageAttributionService);
             _broadcastRotationService = new BroadcastRotationService(config);
             _welcomeMessageService = new WelcomeMessageService(config);
         }

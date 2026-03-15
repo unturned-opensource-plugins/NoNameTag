@@ -169,3 +169,25 @@ MIT 许可证是一个宽松的开源许可证，允许：
 
 感谢以下项目的参考和灵感：
 - [RichMessageAnnouncer](https://github.com/RestoreMonarchyPlugins/RichMessageAnnouncer) - 提供了聊天消息和头像显示的实现参考
+## Score Tracking
+
+- Local LiteDB database: `Data/nonametag.litedb`
+- Tracks `CurrentKillstreak`, `TotalKills`, and `TotalDeaths`
+- Bleeding deaths can be attributed to the most recent player who applied a bleed-capable hit
+- Admin command: `/nametag stats [player]`
+
+### StatsSettings example
+
+```xml
+<StatsSettings>
+  <Enabled>true</Enabled>
+  <DatabaseRelativePath>Data/nonametag.litedb</DatabaseRelativePath>
+  <CommandTimeoutSeconds>5</CommandTimeoutSeconds>
+  <ShowInFormattedNames>true</ShowInFormattedNames>
+  <DisplayFormat> [KS:{streak} K:{kills} D:{deaths}]</DisplayFormat>
+  <DisplayColor>#C0C0C0</DisplayColor>
+  <DisplayFontSize>0</DisplayFontSize>
+  <BleedHitRetentionSeconds>15</BleedHitRetentionSeconds>
+  <BleedSourceRetentionSeconds>180</BleedSourceRetentionSeconds>
+</StatsSettings>
+```
