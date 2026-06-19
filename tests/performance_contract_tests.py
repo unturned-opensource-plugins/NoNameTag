@@ -188,12 +188,11 @@ def test_ci_and_release_workflows_run_stage1_tests_before_build_or_publish():
         assert "python3 tests/performance_contract_tests.py" in workflow or "python tests/performance_contract_tests.py" in workflow, workflow_name
         assert "dotnet test" in workflow, workflow_name
         assert "dotnet build --configuration Release" in workflow, workflow_name
-    assert "LiteDB.dll" in release
-    assert "release/LiteDB.dll" in release
+    assert "Costura.Fody" in read("NoNameTag.csproj")
 
 
-def test_stage2_version_is_1_1_0():
-    assert "<Version>1.1.0</Version>" in read("NoNameTag.csproj")
+def test_stage2_version_is_1_1_1():
+    assert "<Version>1.1.1</Version>" in read("NoNameTag.csproj")
 
 
 def test_stage2_chat_service_and_sender_seam_are_wired():
@@ -229,6 +228,13 @@ def test_stage2_death_message_consumes_attribution_context_without_requerying_da
     assert "TryGetBleedAttribution" not in death_service
     assert "TryGetRecentAttribution" not in death_service
     assert "ResolveKiller(resolvedAttribution" in death_service
+
+
+def test_litedb_is_embedded_into_plugin_release_build():
+    assert (ROOT / "FodyWeavers.xml").exists()
+    csproj = read("NoNameTag.csproj")
+    assert "Costura.Fody" in csproj
+    assert "<Costura" in read("FodyWeavers.xml")
 
 
 if __name__ == "__main__":

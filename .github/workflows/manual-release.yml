@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g., 1.1.0)'
+        description: 'Release version (e.g., 1.1.1)'
         required: true
         type: string
 
@@ -49,7 +49,6 @@ jobs:
         run: |
           mkdir -p release
           copy "bin\Release\net48\NoNameTag.dll" "release\NoNameTag.dll"
-          copy "bin\Release\net48\LiteDB.dll" "release\LiteDB.dll"
 
       - name: Create Git Tag
         run: |
@@ -62,23 +61,19 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ github.event.inputs.version }}
-          files: |
-            release/NoNameTag.dll
-            release/LiteDB.dll
+          files: release/NoNameTag.dll
           draft: false
           prerelease: false
           body: |
             # NoNameTag v${{ github.event.inputs.version }}
 
             ## 下载
-            - `NoNameTag.dll` - 插件主文件
-            - `LiteDB.dll` - 玩家统计数据库依赖
+            - `NoNameTag.dll` - 插件主文件，已内嵌 LiteDB 依赖
 
             ## 安装步骤
             1. 将 `NoNameTag.dll` 复制到服务器的 `Rocket/Plugins` 文件夹
-            2. 将 `LiteDB.dll` 复制到服务器的 `Rocket/Libraries` 文件夹；如果该文件夹不存在请先创建
-            3. 重启服务器或使用 `/rocket reload` 命令
-            4. 编辑插件生成的配置；字段说明参考仓库内 `NoNameTagConfiguration.example.xml`
+            2. 重启服务器或使用 `/rocket reload` 命令
+            3. 编辑插件生成的配置；字段说明参考仓库内 `NoNameTagConfiguration.example.xml`
 
             ## 更新日志
             详见 [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
