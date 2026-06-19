@@ -188,6 +188,8 @@ def test_ci_and_release_workflows_run_stage1_tests_before_build_or_publish():
         assert "python3 tests/performance_contract_tests.py" in workflow or "python tests/performance_contract_tests.py" in workflow, workflow_name
         assert "dotnet test" in workflow, workflow_name
         assert "dotnet build --configuration Release" in workflow, workflow_name
+    assert "LiteDB.dll" in release
+    assert "release/LiteDB.dll" in release
 
 
 def test_stage2_version_is_1_1_0():
