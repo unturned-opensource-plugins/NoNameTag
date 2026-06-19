@@ -188,11 +188,11 @@ def test_ci_and_release_workflows_run_stage1_tests_before_build_or_publish():
         assert "python3 tests/performance_contract_tests.py" in workflow or "python tests/performance_contract_tests.py" in workflow, workflow_name
         assert "dotnet test" in workflow, workflow_name
         assert "dotnet build --configuration Release" in workflow, workflow_name
-    assert "Costura.Fody" in read("NoNameTag.csproj")
+    assert "ILRepack.Lib.MSBuild.Task" in read("NoNameTag.csproj")
 
 
-def test_stage2_version_is_1_1_1():
-    assert "<Version>1.1.1</Version>" in read("NoNameTag.csproj")
+def test_stage2_version_is_1_1_2():
+    assert "<Version>1.1.2</Version>" in read("NoNameTag.csproj")
 
 
 def test_stage2_chat_service_and_sender_seam_are_wired():
@@ -230,11 +230,15 @@ def test_stage2_death_message_consumes_attribution_context_without_requerying_da
     assert "ResolveKiller(resolvedAttribution" in death_service
 
 
-def test_litedb_is_embedded_into_plugin_release_build():
-    assert (ROOT / "FodyWeavers.xml").exists()
+def test_litedb_is_merged_into_plugin_release_build():
+    assert (ROOT / "ILRepack.targets").exists()
+    assert not (ROOT / "FodyWeavers.xml").exists()
     csproj = read("NoNameTag.csproj")
-    assert "Costura.Fody" in csproj
-    assert "<Costura" in read("FodyWeavers.xml")
+    targets = read("ILRepack.targets")
+    assert "ILRepack.Lib.MSBuild.Task" in csproj
+    assert "Costura.Fody" not in csproj
+    assert "Libraries\\LiteDB.dll" in targets
+    assert "Internalize=\"true\"" in targets
 
 
 if __name__ == "__main__":

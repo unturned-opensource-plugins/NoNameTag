@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g., 1.1.1)'
+        description: 'Release version (e.g., 1.1.2)'
         required: true
         type: string
 
@@ -68,7 +68,7 @@ jobs:
             # NoNameTag v${{ github.event.inputs.version }}
 
             ## 下载
-            - `NoNameTag.dll` - 插件主文件，已内嵌 LiteDB 依赖
+            - `NoNameTag.dll` - 插件主文件，已用 ILRepack 合并 LiteDB 依赖
 
             ## 安装步骤
             1. 将 `NoNameTag.dll` 复制到服务器的 `Rocket/Plugins` 文件夹
