@@ -32,9 +32,9 @@ def extract_method(source: str, method_name: str) -> str:
 
 
 def test_chat_formatting_uses_cached_display_name():
-    plugin = read("NoNameTagPlugin.cs")
-    body = extract_method(plugin, "BuildFormattedChatMessage")
-    assert "NameTagManager.GetFormattedPlayerName" in body
+    chat_service = read("Services/ChatMessageService.cs")
+    body = extract_method(chat_service, "BuildFormattedMessage")
+    assert "_formattedNameProvider.GetFormattedPlayerName" in body
     assert "NameFormatter.FormatPlayerName" not in body
 
 
@@ -48,23 +48,35 @@ def test_damage_handler_resolves_attacker_player_once():
 
 def test_group_chat_does_not_wrap_each_client_as_unturned_player():
     plugin = read("NoNameTagPlugin.cs")
-    body = extract_method(plugin, "OnPlayerChatted")
+    chat_service = read("Services/ChatMessageService.cs")
+    body = extract_method(plugin, "GetChatParticipants")
     assert "UnturnedPlayer.FromSteamPlayer(client)" not in body
     assert "client.player.quests.groupID" in body
+    assert "request.Sender.GroupId" in chat_service
+
+
+def test_chat_event_short_circuits_before_recipient_snapshot():
+    plugin = read("NoNameTagPlugin.cs")
+    body = extract_method(plugin, "OnPlayerChatted")
+    assert "if (!ShouldHandleChatEvent(player, message, cancel))" in body
+    assert body.index("ShouldHandleChatEvent") < body.index("GetChatParticipants")
+    assert "Recipients = RequiresRecipientSnapshot(mode) ? GetChatParticipants() : null" in body
 
 
 def test_chat_sanitization_uses_single_pass_helper():
-    plugin = read("NoNameTagPlugin.cs")
-    body = extract_method(plugin, "BuildFormattedChatMessage")
+    chat_service = read("Services/ChatMessageService.cs")
+    body = extract_method(chat_service, "BuildFormattedMessage")
     assert "RichTextSanitizer.SanitizeUntrustedPlayerText(message)" in body
     assert ".Replace(\"<\", \"\")" not in body
 
 
 def test_chat_sender_steam_player_is_cached_per_message():
     plugin = read("NoNameTagPlugin.cs")
-    body = extract_method(plugin, "OnPlayerChatted")
-    assert "var senderSteamPlayer = player.SteamPlayer();" in body
-    assert body.count("player.SteamPlayer()") == 1
+    runtime_sender = read("Services/RuntimeChatMessageSender.cs")
+    chatted_body = extract_method(plugin, "OnPlayerChatted")
+    assert "player.SteamPlayer()" not in chatted_body
+    assert "RuntimeSteamPlayer" not in plugin
+    assert "BroadcastHelper.GetSteamPlayer(new CSteamID(dispatch.Sender.SteamId))" in runtime_sender
 
 
 def test_formatted_name_cache_cleanup_includes_formatted_only_entries():
@@ -138,11 +150,11 @@ def test_unsupported_overhead_and_avatar_settings_are_removed_from_user_docs():
 
 
 def test_untrusted_player_text_uses_shared_rich_text_sanitizer():
-    plugin = read("NoNameTagPlugin.cs")
+    chat_service = read("Services/ChatMessageService.cs")
     welcome = read("Services/WelcomeMessageService.cs")
     death = read("Services/DeathMessageService.cs")
     assert (ROOT / "Utilities/RichTextSanitizer.cs").exists()
-    assert "RichTextSanitizer.SanitizeUntrustedPlayerText(message)" in plugin
+    assert "RichTextSanitizer.SanitizeUntrustedPlayerText(message)" in chat_service
     assert "RichTextSanitizer.SanitizeUntrustedPlayerText(player.DisplayName" in welcome
     assert "RichTextSanitizer.SanitizeUntrustedPlayerText(playerName" in death
 
@@ -178,8 +190,43 @@ def test_ci_and_release_workflows_run_stage1_tests_before_build_or_publish():
         assert "dotnet build --configuration Release" in workflow, workflow_name
 
 
-def test_stage1_version_is_1_0_2():
-    assert "<Version>1.0.2</Version>" in read("NoNameTag.csproj")
+def test_stage2_version_is_1_1_0():
+    assert "<Version>1.1.0</Version>" in read("NoNameTag.csproj")
+
+
+def test_stage2_chat_service_and_sender_seam_are_wired():
+    plugin = read("NoNameTagPlugin.cs")
+    models = read("Services/ChatMessageModels.cs")
+    assert (ROOT / "Services/ChatMessageService.cs").exists()
+    assert (ROOT / "Services/IChatMessageSender.cs").exists()
+    assert (ROOT / "Services/IFormattedNameProvider.cs").exists()
+    assert (ROOT / "Services/RuntimeChatMessageSender.cs").exists()
+    assert "SteamPlayer" not in models
+    assert "UnityEngine" not in models
+    assert "SDG.Unturned" not in models
+    assert "ChatMessageService = new ChatMessageService" in plugin
+    assert "new RuntimeChatMessageSender()" in plugin
+    assert "using Rocket.Unturned.Player" not in read("tests/NoNameTag.Tests/ChatMessageServiceTests.cs")
+    chatted_body = extract_method(plugin, "OnPlayerChatted")
+    assert "ChatMessageService?.HandleChat" in chatted_body
+    assert "ChatManager.serverSendMessage" not in chatted_body
+
+
+def test_stage2_death_attribution_resolved_once_and_shared():
+    plugin = read("NoNameTagPlugin.cs")
+    body = extract_method(plugin, "OnPlayerDied")
+    assert body.count("DeathAttributionResolver?.Resolve") == 1
+    assert "PlayerStatsService?.RecordPlayerDeath(victimSteamId, attribution.KillerSteamId ?? 0)" in body
+    assert "BroadcastService?.HandlePlayerDeath(sender, cause, limb, instigator, attribution)" in body
+    assert body.count("DamageAttributionService?.ClearVictim(victimSteamId)") == 1
+
+
+def test_stage2_death_message_consumes_attribution_context_without_requerying_damage_service():
+    death_service = read("Services/DeathMessageService.cs")
+    assert "DeathAttributionContext attribution" in death_service
+    assert "TryGetBleedAttribution" not in death_service
+    assert "TryGetRecentAttribution" not in death_service
+    assert "ResolveKiller(resolvedAttribution" in death_service
 
 
 if __name__ == "__main__":

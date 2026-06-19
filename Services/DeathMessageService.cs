@@ -19,19 +19,16 @@ namespace Emqo.NoNameTag.Services
         private const string UnknownDistanceText = "-";
         private readonly NoNameTagConfiguration _config;
         private readonly INameTagManager _nameTagManager;
-        private readonly IDamageAttributionService _damageAttributionService;
 
         public DeathMessageService(
             NoNameTagConfiguration config,
-            INameTagManager nameTagManager,
-            IDamageAttributionService damageAttributionService)
+            INameTagManager nameTagManager)
         {
             _config = config;
             _nameTagManager = nameTagManager;
-            _damageAttributionService = damageAttributionService;
         }
 
-        public void HandlePlayerDeath(PlayerLife sender, EDeathCause cause, ELimb limb, CSteamID instigator)
+        public void HandlePlayerDeath(PlayerLife sender, EDeathCause cause, ELimb limb, CSteamID instigator, DeathAttributionContext attribution)
         {
             if (!_config.Enabled || _config.Broadcast?.DeathMessage == null || !_config.Broadcast.DeathMessage.Enabled)
                 return;
@@ -47,11 +44,13 @@ namespace Emqo.NoNameTag.Services
                 var victim = UnturnedPlayer.FromPlayer(sender.player);
                 if (victim == null) return;
 
-                var attribution = ResolveDeathAttribution(victim, cause, instigator);
-                var message = FormatDeathMessage(victim, attribution.Killer, cause, limb, attribution.WeaponName, attribution.DistanceMeters);
+                var victimSteamId = TryGetSteamId(victim);
+                var resolvedAttribution = attribution ?? CreateDirectAttribution(victimSteamId, instigator);
+                var killer = ResolveKiller(resolvedAttribution, victimSteamId);
+                var message = FormatDeathMessage(victim, killer, cause, limb, resolvedAttribution.WeaponName, resolvedAttribution.DistanceMeters);
                 if (!string.IsNullOrEmpty(message))
                 {
-                    BroadcastDeathMessage(message, victim, attribution.Killer);
+                    BroadcastDeathMessage(message, victim, killer);
                 }
             }
             catch (Exception ex)
@@ -326,48 +325,25 @@ namespace Emqo.NoNameTag.Services
             return NameFormatter.FormatPlayerName(playerName, steamId, group?.DisplayEffect);
         }
 
-        private DeathAttribution ResolveDeathAttribution(UnturnedPlayer victim, EDeathCause cause, CSteamID instigator)
+        private UnturnedPlayer ResolveKiller(DeathAttributionContext attribution, ulong victimSteamId)
         {
-            if (victim == null)
-                return DeathAttribution.Empty;
+            if (attribution?.KillerSteamId == null)
+                return null;
 
-            var victimSteamId = TryGetSteamId(victim);
-            if (victimSteamId == 0)
-                return DeathAttribution.Empty;
+            return TryResolvePlayer(new CSteamID(attribution.KillerSteamId.Value), victimSteamId);
+        }
 
-            if (instigator != CSteamID.Nil && instigator.m_SteamID != 0)
+        private DeathAttributionContext CreateDirectAttribution(ulong victimSteamId, CSteamID instigator)
+        {
+            if (instigator == CSteamID.Nil || instigator.m_SteamID == 0 || instigator.m_SteamID == victimSteamId)
+                return DeathAttributionContext.Empty;
+
+            return new DeathAttributionContext
             {
-                return new DeathAttribution
-                {
-                    Killer = TryResolvePlayer(instigator, victimSteamId)
-                };
-            }
-
-            if (cause == EDeathCause.BLEEDING
-                && _damageAttributionService != null
-                && _damageAttributionService.TryGetBleedAttribution(victimSteamId, out var bleedAttribution))
-            {
-                return new DeathAttribution
-                {
-                    Killer = TryResolvePlayer(new CSteamID(bleedAttribution.AttackerSteamId), victimSteamId),
-                    WeaponName = bleedAttribution.WeaponName,
-                    DistanceMeters = bleedAttribution.DistanceMeters
-                };
-            }
-
-            if (SupportsRecentAttribution(cause)
-                && _damageAttributionService != null
-                && _damageAttributionService.TryGetRecentAttribution(victimSteamId, out var recentAttribution))
-            {
-                return new DeathAttribution
-                {
-                    Killer = TryResolvePlayer(new CSteamID(recentAttribution.AttackerSteamId), victimSteamId),
-                    WeaponName = recentAttribution.WeaponName,
-                    DistanceMeters = recentAttribution.DistanceMeters
-                };
-            }
-
-            return DeathAttribution.Empty;
+                VictimSteamId = victimSteamId,
+                KillerSteamId = instigator.m_SteamID,
+                Source = DeathAttributionSource.DirectInstigator
+            };
         }
 
         private UnturnedPlayer TryResolvePlayer(CSteamID steamId, ulong victimSteamId)
@@ -399,36 +375,6 @@ namespace Emqo.NoNameTag.Services
             {
                 return 0;
             }
-        }
-
-        private static bool SupportsRecentAttribution(EDeathCause cause)
-        {
-            switch (cause)
-            {
-                case EDeathCause.GRENADE:
-                case EDeathCause.MISSILE:
-                case EDeathCause.CHARGE:
-                case EDeathCause.SPLASH:
-                case EDeathCause.LANDMINE:
-                case EDeathCause.VEHICLE:
-                case EDeathCause.ROADKILL:
-                case EDeathCause.BURNING:
-                case EDeathCause.BURNER:
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
-        private sealed class DeathAttribution
-        {
-            public static readonly DeathAttribution Empty = new DeathAttribution();
-
-            public UnturnedPlayer Killer { get; set; }
-
-            public string WeaponName { get; set; }
-
-            public int? DistanceMeters { get; set; }
         }
 
         private void BroadcastDeathMessage(string message, UnturnedPlayer victim, UnturnedPlayer killer)

@@ -7,7 +7,7 @@ namespace Emqo.NoNameTag.Services
     /// <summary>
     /// 名称标签管理器接口
     /// </summary>
-    public interface INameTagManager
+    public interface INameTagManager : IFormattedNameProvider
     {
         /// <summary>
         /// 应用显示效果
@@ -33,11 +33,6 @@ namespace Emqo.NoNameTag.Services
         /// 获取玩家效果
         /// </summary>
         PermissionGroupConfig GetPlayerEffect(ulong steamId);
-
-        /// <summary>
-        /// 获取缓存后的显示名（聊天热路径使用；缓存未命中时不读取统计，避免每条消息触发数据库读取）
-        /// </summary>
-        string GetFormattedPlayerName(ulong steamId, string fallbackPlayerName);
 
         /// <summary>
         /// 清除所有缓存

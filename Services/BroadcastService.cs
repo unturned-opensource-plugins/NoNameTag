@@ -11,7 +11,7 @@ namespace Emqo.NoNameTag.Services
     /// </summary>
     public interface IBroadcastService : IDisposable
     {
-        void HandlePlayerDeath(PlayerLife sender, EDeathCause cause, ELimb limb, CSteamID instigator);
+        void HandlePlayerDeath(PlayerLife sender, EDeathCause cause, ELimb limb, CSteamID instigator, DeathAttributionContext attribution);
         void SendWelcomeMessage(UnturnedPlayer player);
         void SendLeaveMessage(UnturnedPlayer player);
         void StartAllBroadcasts();
@@ -33,10 +33,9 @@ namespace Emqo.NoNameTag.Services
 
         public BroadcastService(
             NoNameTagConfiguration config,
-            INameTagManager nameTagManager,
-            IDamageAttributionService damageAttributionService)
+            INameTagManager nameTagManager)
         {
-            _deathMessageService = new DeathMessageService(config, nameTagManager, damageAttributionService);
+            _deathMessageService = new DeathMessageService(config, nameTagManager);
             _broadcastRotationService = new BroadcastRotationService(config);
             _welcomeMessageService = new WelcomeMessageService(config);
         }
@@ -48,8 +47,8 @@ namespace Emqo.NoNameTag.Services
             _broadcastRotationService.Dispose();
         }
 
-        public void HandlePlayerDeath(PlayerLife sender, EDeathCause cause, ELimb limb, CSteamID instigator)
-            => _deathMessageService.HandlePlayerDeath(sender, cause, limb, instigator);
+        public void HandlePlayerDeath(PlayerLife sender, EDeathCause cause, ELimb limb, CSteamID instigator, DeathAttributionContext attribution)
+            => _deathMessageService.HandlePlayerDeath(sender, cause, limb, instigator, attribution);
 
         public void SendWelcomeMessage(UnturnedPlayer player)
             => _welcomeMessageService.SendWelcomeMessage(player);

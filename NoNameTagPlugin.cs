@@ -21,6 +21,8 @@ namespace Emqo.NoNameTag
         public IBroadcastService BroadcastService { get; private set; }
         public IPlayerStatsService PlayerStatsService { get; private set; }
         public IDamageAttributionService DamageAttributionService { get; private set; }
+        public IDeathAttributionResolver DeathAttributionResolver { get; private set; }
+        private ChatMessageService ChatMessageService { get; set; }
 
         protected override void Load()
         {
@@ -99,8 +101,10 @@ namespace Emqo.NoNameTag
             PermissionService = new PermissionService(Configuration.Instance);
             PlayerStatsService = new PlayerStatsService(Configuration.Instance.StatsSettings);
             DamageAttributionService = new DamageAttributionService(Configuration.Instance.StatsSettings);
+            DeathAttributionResolver = new DeathAttributionResolver(DamageAttributionService);
             NameTagManager = new NameTagManager(Configuration.Instance, PermissionService);
-            BroadcastService = new BroadcastService(Configuration.Instance, NameTagManager, DamageAttributionService);
+            ChatMessageService = new ChatMessageService(Configuration.Instance, NameTagManager, new RuntimeChatMessageSender());
+            BroadcastService = new BroadcastService(Configuration.Instance, NameTagManager);
 
             Logger.Debug("All services initialized");
         }
@@ -193,64 +197,26 @@ namespace Emqo.NoNameTag
 
         private void OnPlayerChatted(UnturnedPlayer player, ref Color color, string message, EChatMode chatMode, ref bool cancel)
         {
-            // 跳过命令消息，让 Rocket 处理
-            if (message.StartsWith("/") || cancel)
+            if (!ShouldHandleChatEvent(player, message, cancel))
                 return;
-
-            if (!IsValidChatMessage(player)) return;
 
             try
             {
-                var (formattedMessage, avatarUrl) = BuildFormattedChatMessage(player, message, chatMode);
-                if (string.IsNullOrEmpty(formattedMessage)) return;
+                var mode = ToChatMessageMode(chatMode);
+                var handled = ChatMessageService?.HandleChat(new ChatMessageRequest
+                {
+                    Sender = CreateChatParticipant(player),
+                    Recipients = RequiresRecipientSnapshot(mode) ? GetChatParticipants() : null,
+                    Message = message,
+                    ChatMode = mode,
+                    IsCanceled = cancel
+                }) == true;
+
+                if (!handled)
+                    return;
 
                 cancel = true;
-                Logger.Debug($"Chat message - Player: {player.DisplayName}, SteamID: {player.CSteamID.m_SteamID}, ChatMode: {chatMode}, Message: {formattedMessage}", LogCategory.Plugin);
-                var senderSteamPlayer = player.SteamPlayer();
-
-                // 根据聊天模式决定发送范围
-                switch (chatMode)
-                {
-                    case EChatMode.LOCAL:
-                        // 区域聊天：只发给附近玩家
-                        foreach (var client in Provider.clients)
-                        {
-                            if (client?.player == null) continue;
-                            var distance = (client.player.transform.position - player.Player.transform.position).sqrMagnitude;
-                            // Unturned 区域聊天默认范围约 64m（sqrMagnitude = 4096）
-                            if (distance <= 4096f)
-                            {
-                                ChatManager.serverSendMessage(formattedMessage, Color.white, senderSteamPlayer, client, EChatMode.LOCAL, avatarUrl, true);
-                            }
-                        }
-                        break;
-
-                    case EChatMode.GROUP:
-                        // 组聊天：只发给同组玩家
-                        var senderGroupId = player.Player.quests.groupID;
-                        if (senderGroupId == CSteamID.Nil)
-                        {
-                            // 不在组里，只发给自己
-                            ChatManager.serverSendMessage(formattedMessage, Color.white, senderSteamPlayer, senderSteamPlayer, EChatMode.GROUP, avatarUrl, true);
-                        }
-                        else
-                        {
-                            foreach (var client in Provider.clients)
-                            {
-                                if (client?.player == null) continue;
-                                if (client.player.quests.groupID == senderGroupId)
-                                {
-                                    ChatManager.serverSendMessage(formattedMessage, Color.white, senderSteamPlayer, client, EChatMode.GROUP, avatarUrl, true);
-                                }
-                            }
-                        }
-                        break;
-
-                    default:
-                        // GLOBAL / SAY：发给所有人
-                        ChatManager.serverSendMessage(formattedMessage, Color.white, senderSteamPlayer, null, chatMode, avatarUrl, true);
-                        break;
-                }
+                Logger.Debug($"Chat message - Player: {player?.DisplayName}, SteamID: {player?.CSteamID.m_SteamID}, ChatMode: {chatMode}", LogCategory.Plugin);
             }
             catch (Exception ex)
             {
@@ -258,34 +224,78 @@ namespace Emqo.NoNameTag
             }
         }
 
-        private bool IsValidChatMessage(UnturnedPlayer player)
+        private bool ShouldHandleChatEvent(UnturnedPlayer player, string message, bool cancel)
         {
             return Configuration.Instance.Enabled
                 && Configuration.Instance.ApplyToChatMessages
-                && player != null;
+                && player != null
+                && !cancel
+                && !string.IsNullOrEmpty(message)
+                && !message.StartsWith("/", StringComparison.Ordinal);
         }
 
-        private (string message, string avatarUrl) BuildFormattedChatMessage(UnturnedPlayer player, string message, EChatMode chatMode)
+        private static bool RequiresRecipientSnapshot(ChatMessageMode mode)
         {
-            var formattedName = NameTagManager.GetFormattedPlayerName(player.CSteamID.m_SteamID, player.DisplayName);
+            return mode == ChatMessageMode.Local || mode == ChatMessageMode.Group;
+        }
 
-            // 不设置 iconUrl，让 Unturned 自动显示玩家的 Steam 头像
-            string avatarUrl = null;
+        private static ChatMessageMode ToChatMessageMode(EChatMode chatMode)
+        {
+            switch (chatMode)
+            {
+                case EChatMode.LOCAL:
+                    return ChatMessageMode.Local;
+                case EChatMode.GROUP:
+                    return ChatMessageMode.Group;
+                case EChatMode.SAY:
+                    return ChatMessageMode.Say;
+                default:
+                    return ChatMessageMode.Global;
+            }
+        }
 
-            // 过滤玩家输入中的富文本标签，防止 Rich Text 注入
-            var safeMessage = RichTextSanitizer.SanitizeUntrustedPlayerText(message);
+        private ChatMessageParticipant CreateChatParticipant(UnturnedPlayer player)
+        {
+            if (player == null)
+                return null;
 
-            // 根据聊天模式添加 [A]/[G] 前缀
-            string modePrefix = "";
-            if (chatMode == EChatMode.LOCAL)
-                modePrefix = "[A] ";
-            else if (chatMode == EChatMode.GROUP)
-                modePrefix = "[G] ";
+            return new ChatMessageParticipant
+            {
+                SteamId = player.CSteamID.m_SteamID,
+                DisplayName = player.DisplayName,
+                GroupId = player.Player?.quests == null ? 0UL : player.Player.quests.groupID.m_SteamID,
+                Position = ToChatPosition(player.Player?.transform?.position ?? Vector3.zero)
+            };
+        }
 
-            // 构建最终消息（仅对格式化名称部分转换富文本）
-            string finalMessage = $"{modePrefix}{formattedName}: {safeMessage}";
+        private static System.Collections.Generic.IReadOnlyList<ChatMessageParticipant> GetChatParticipants()
+        {
+            var participants = new System.Collections.Generic.List<ChatMessageParticipant>();
+            foreach (var client in Provider.clients)
+            {
+                if (client?.player == null)
+                    continue;
 
-            return (finalMessage, avatarUrl);
+                var steamId = client.player.channel?.owner?.playerID.steamID.m_SteamID ?? 0UL;
+                if (steamId == 0)
+                    continue;
+
+                participants.Add(new ChatMessageParticipant
+                {
+                    SteamId = steamId,
+                    DisplayName = client.player.channel?.owner?.playerID.characterName,
+                    GroupId = client.player.quests == null ? 0UL : client.player.quests.groupID.m_SteamID,
+                    Position = ToChatPosition(client.player.transform?.position ?? Vector3.zero)
+                });
+            }
+
+            return participants;
+        }
+
+
+        private static ChatMessagePosition ToChatPosition(Vector3 position)
+        {
+            return new ChatMessagePosition(position.x, position.y, position.z);
         }
 
         private void OnPlayerDied(PlayerLife sender, EDeathCause cause, ELimb limb, CSteamID instigator)
@@ -295,15 +305,20 @@ namespace Emqo.NoNameTag
             try
             {
                 var victimSteamId = sender?.channel?.owner?.playerID.steamID.m_SteamID ?? 0UL;
-                var resolvedKillerSteamId = ResolveKillerSteamId(victimSteamId, cause, instigator);
+                var attribution = DeathAttributionResolver?.Resolve(new DeathAttributionRequest
+                {
+                    VictimSteamId = victimSteamId,
+                    InstigatorSteamId = instigator.m_SteamID,
+                    Cause = cause
+                }) ?? DeathAttributionContext.Empty;
 
                 if (victimSteamId != 0)
                 {
-                    PlayerStatsService?.RecordPlayerDeath(victimSteamId, resolvedKillerSteamId ?? 0);
-                    RefreshCachedDisplayNames(victimSteamId, resolvedKillerSteamId);
+                    PlayerStatsService?.RecordPlayerDeath(victimSteamId, attribution.KillerSteamId ?? 0);
+                    RefreshCachedDisplayNames(victimSteamId, attribution.KillerSteamId);
                 }
 
-                BroadcastService?.HandlePlayerDeath(sender, cause, limb, instigator);
+                BroadcastService?.HandlePlayerDeath(sender, cause, limb, instigator, attribution);
 
                 if (victimSteamId != 0)
                 {
@@ -390,34 +405,6 @@ namespace Emqo.NoNameTag
             DamageAttributionService?.ClearVictim(steamId);
         }
 
-        private ulong? ResolveKillerSteamId(ulong victimSteamId, EDeathCause cause, CSteamID instigator)
-        {
-            if (instigator != CSteamID.Nil && instigator.m_SteamID != 0 && instigator.m_SteamID != victimSteamId)
-            {
-                return instigator.m_SteamID;
-            }
-
-            if (cause == EDeathCause.BLEEDING
-                && DamageAttributionService != null
-                && DamageAttributionService.TryGetBleedKillerSteamId(victimSteamId, out var bleedKillerSteamId)
-                && bleedKillerSteamId != 0
-                && bleedKillerSteamId != victimSteamId)
-            {
-                return bleedKillerSteamId;
-            }
-
-            if (SupportsRecentAttribution(cause)
-                && DamageAttributionService != null
-                && DamageAttributionService.TryGetRecentKillerSteamId(victimSteamId, out var recentKillerSteamId)
-                && recentKillerSteamId != 0
-                && recentKillerSteamId != victimSteamId)
-            {
-                return recentKillerSteamId;
-            }
-
-            return null;
-        }
-
         private static bool IsAttributionTrackableCause(EDeathCause cause)
         {
             switch (cause)
@@ -444,25 +431,6 @@ namespace Emqo.NoNameTag
         private static bool IsBleedTrackableCause(EDeathCause cause)
         {
             return IsAttributionTrackableCause(cause);
-        }
-
-        private static bool SupportsRecentAttribution(EDeathCause cause)
-        {
-            switch (cause)
-            {
-                case EDeathCause.GRENADE:
-                case EDeathCause.MISSILE:
-                case EDeathCause.CHARGE:
-                case EDeathCause.SPLASH:
-                case EDeathCause.LANDMINE:
-                case EDeathCause.VEHICLE:
-                case EDeathCause.ROADKILL:
-                case EDeathCause.BURNING:
-                case EDeathCause.BURNER:
-                    return true;
-                default:
-                    return false;
-            }
         }
 
         private void RefreshCachedDisplayNames(ulong victimSteamId, ulong? killerSteamId)
