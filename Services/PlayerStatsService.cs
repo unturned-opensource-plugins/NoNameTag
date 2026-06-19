@@ -143,6 +143,23 @@ namespace Emqo.NoNameTag.Services
             _currentKillstreaks.TryRemove(steamId, out _);
         }
 
+        public void ReleasePlayer(ulong steamId)
+        {
+            EnsureNotDisposed();
+
+            if (!IsValidSteamId(steamId))
+                return;
+
+            if (_settings.Enabled && _dirtySteamIds.ContainsKey(steamId))
+            {
+                var flushed = FlushDirtyRecords();
+                if (!flushed || _dirtySteamIds.ContainsKey(steamId))
+                    return;
+            }
+
+            _cachedStats.TryRemove(steamId, out _);
+        }
+
         public void ClearSession()
         {
             EnsureNotDisposed();
@@ -223,15 +240,15 @@ namespace Emqo.NoNameTag.Services
                 _dirtySteamIds[steamId] = 0;
         }
 
-        private void FlushDirtyRecords()
+        private bool FlushDirtyRecords()
         {
             if (_disposed || !_settings.Enabled || _dirtySteamIds.IsEmpty)
-                return;
+                return true;
 
             lock (_syncRoot)
             {
                 if (_dirtySteamIds.IsEmpty)
-                    return;
+                    return true;
 
                 try
                 {
@@ -250,10 +267,13 @@ namespace Emqo.NoNameTag.Services
                             _dirtySteamIds.TryRemove(dirtySteamId, out _);
                         }
                     }
+
+                    return true;
                 }
                 catch (Exception ex)
                 {
                     Logger.Exception(ex, "Failed to flush player stats cache", LogCategory.Plugin);
+                    return false;
                 }
             }
         }

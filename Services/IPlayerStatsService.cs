@@ -19,6 +19,8 @@ namespace Emqo.NoNameTag.Services
 
         void ClearCurrentKillstreak(ulong steamId);
 
+        void ReleasePlayer(ulong steamId);
+
         void ClearSession();
     }
 }

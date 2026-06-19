@@ -320,6 +320,7 @@ namespace Emqo.NoNameTag.Services
                 playerName = "Unknown";
             }
 
+            playerName = RichTextSanitizer.SanitizeUntrustedPlayerText(playerName);
             var steamId = TryGetSteamId(player);
             var group = steamId != 0 ? _nameTagManager?.GetPlayerEffect(steamId) : null;
             return NameFormatter.FormatPlayerName(playerName, steamId, group?.DisplayEffect);
@@ -472,7 +473,7 @@ namespace Emqo.NoNameTag.Services
             if (player == null) return;
             var steamPlayer = BroadcastHelper.GetSteamPlayer(player.CSteamID);
             if (steamPlayer != null)
-                ChatManager.serverSendMessage(message, Color.white, steamPlayer, null, EChatMode.SAY, null, true);
+                ChatManager.serverSendMessage(message, Color.white, null, steamPlayer, EChatMode.SAY, null, true);
         }
     }
 }

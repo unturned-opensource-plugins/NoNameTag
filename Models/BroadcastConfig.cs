@@ -79,9 +79,6 @@ namespace Emqo.NoNameTag.Models
         [XmlElement("Message")]
         public string Message { get; set; } = "";
 
-        [XmlElement("DelaySeconds")]
-        public int DelaySeconds { get; set; } = 0;
-
         [XmlElement("FontColor")]
         public string FontColor { get; set; } = "";
 
@@ -104,10 +101,9 @@ namespace Emqo.NoNameTag.Models
         {
         }
 
-        public BroadcastMessage(string message, int delaySeconds = 0, string avatar = "", AvatarPosition position = AvatarPosition.Left)
+        public BroadcastMessage(string message, string avatar = "", AvatarPosition position = AvatarPosition.Left)
         {
             Message = message;
-            DelaySeconds = delaySeconds;
             Avatar = avatar;
             AvatarPosition = position;
         }

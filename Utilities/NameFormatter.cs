@@ -173,10 +173,30 @@ namespace Emqo.NoNameTag.Utilities
         /// </summary>
         public static Color ParseColor(string hex)
         {
-            if (string.IsNullOrEmpty(hex))
+            return ParseColorValue(hex);
+        }
+
+        public static Color ParseColorValue(string colorValue)
+        {
+            if (string.IsNullOrWhiteSpace(colorValue))
                 return Color.white;
 
-            hex = hex.TrimStart('#');
+            var normalized = colorValue.Trim();
+            switch (normalized.ToLowerInvariant())
+            {
+                case "black": return Color.black;
+                case "blue": return Color.blue;
+                case "cyan": return Color.cyan;
+                case "gray":
+                case "grey": return Color.gray;
+                case "green": return Color.green;
+                case "magenta": return Color.magenta;
+                case "red": return Color.red;
+                case "white": return Color.white;
+                case "yellow": return Color.yellow;
+            }
+
+            var hex = normalized.TrimStart('#');
 
             if (hex.Length != Constants.HexColorLength)
                 return Color.white;

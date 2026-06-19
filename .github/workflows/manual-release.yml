@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g., 1.0.1)'
+        description: 'Release version (e.g., 1.0.2)'
         required: true
         type: string
 
@@ -19,13 +19,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
+      - name: Run Python contract tests
+        shell: bash
+        run: python tests/performance_contract_tests.py
+
       - name: Restore dependencies
         run: dotnet restore
+
+      - name: Restore test dependencies
+        run: dotnet restore tests/NoNameTag.Tests/NoNameTag.Tests.csproj
+
+      - name: Run C# tests
+        run: dotnet test tests/NoNameTag.Tests/NoNameTag.Tests.csproj --configuration Release --no-restore
 
       - name: Build Release
         run: dotnet build --configuration Release --no-restore
@@ -58,7 +73,7 @@ jobs:
             ## 安装步骤
             1. 将 `NoNameTag.dll` 复制到服务器的 `Rocket/Plugins` 文件夹
             2. 重启服务器或使用 `/rocket reload` 命令
-            3. 编辑 `Rocket/Plugins/NoNameTag/NoNameTag.configuration.xml` 进行配置
+            3. 编辑插件生成的配置；字段说明参考仓库内 `NoNameTagConfiguration.example.xml`
 
             ## 更新日志
             详见 [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)

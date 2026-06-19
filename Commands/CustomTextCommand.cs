@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Emqo.NoNameTag.Utilities;
 
 namespace Emqo.NoNameTag.Commands
 {
@@ -41,8 +42,9 @@ namespace Emqo.NoNameTag.Commands
 
             var message = textCmd.Message.Replace("{", "<").Replace("}", ">");
             var iconUrl = string.IsNullOrEmpty(textCmd.IconUrl) ? null : textCmd.IconUrl;
+            var color = NameFormatter.ParseColorValue(textCmd.Color);
 
-            ChatManager.serverSendMessage(message, Color.white, null, player.SteamPlayer(), EChatMode.SAY, iconUrl, true);
+            ChatManager.serverSendMessage(message, color, null, player.SteamPlayer(), EChatMode.SAY, iconUrl, true);
         }
 
         private void ShowAvailableCommands(UnturnedPlayer player)

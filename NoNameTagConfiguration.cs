@@ -113,9 +113,9 @@ namespace Emqo.NoNameTag
                     RotationInterval = 120,
                     Messages = new List<BroadcastMessage>
                     {
-                        new BroadcastMessage("欢迎来到服务器！请遵守规则。", 0),
-                        new BroadcastMessage("使用 /help 查看可用命令。", 0),
-                        new BroadcastMessage("禁止恶意破坏和骚扰其他玩家。", 0)
+                        new BroadcastMessage("欢迎来到服务器！请遵守规则。"),
+                        new BroadcastMessage("使用 /help 查看可用命令。"),
+                        new BroadcastMessage("禁止恶意破坏和骚扰其他玩家。")
                     }
                 }
             };

@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test-and-build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Run Python contract tests
+        shell: bash
+        run: python tests/performance_contract_tests.py
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Restore test dependencies
+        run: dotnet restore tests/NoNameTag.Tests/NoNameTag.Tests.csproj
+
+      - name: Run C# tests
+        run: dotnet test tests/NoNameTag.Tests/NoNameTag.Tests.csproj --configuration Release --no-restore
+
+      - name: Build Release
+        run: dotnet build --configuration Release --no-restore

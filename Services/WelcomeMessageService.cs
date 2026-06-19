@@ -27,8 +27,9 @@ namespace Emqo.NoNameTag.Services
             try
             {
                 var welcomeConfig = _config.WelcomeMessage;
+                var safePlayerName = RichTextSanitizer.SanitizeUntrustedPlayerText(player.DisplayName);
                 var messageText = BroadcastHelper.ReplaceVariables(welcomeConfig.Text);
-                messageText = messageText.Replace("{player}", player.DisplayName);
+                messageText = messageText.Replace("{player}", safePlayerName);
                 messageText = messageText.Replace("{br}", "\n");
                 messageText = messageText.Replace("{", "<").Replace("}", ">");
 
@@ -64,8 +65,9 @@ namespace Emqo.NoNameTag.Services
             try
             {
                 var welcomeConfig = _config.WelcomeMessage;
+                var safePlayerName = RichTextSanitizer.SanitizeUntrustedPlayerText(player.DisplayName);
                 var messageText = BroadcastHelper.ReplaceVariables(welcomeConfig.LeaveText);
-                messageText = messageText.Replace("{player}", player.DisplayName);
+                messageText = messageText.Replace("{player}", safePlayerName);
                 messageText = messageText.Replace("{br}", "\n");
                 messageText = messageText.Replace("{", "<").Replace("}", ">");
 

@@ -7,9 +7,15 @@ namespace Emqo.NoNameTag.Utilities
     public static class ConfigValidator
     {
         private static readonly Regex HexColorRegex = new Regex(@"^#?[0-9A-Fa-f]{6}$", RegexOptions.Compiled);
+        private static readonly Regex UnityColorNameRegex = new Regex(@"^[a-zA-Z]+$", RegexOptions.Compiled);
         private static readonly Regex PermissionRegex = new Regex(@"^[a-zA-Z0-9_.]+$", RegexOptions.Compiled);
 
         public static bool ValidateHexColor(string color, out string error)
+        {
+            return ValidateColorValue(color, out error);
+        }
+
+        public static bool ValidateColorValue(string color, out string error)
         {
             error = null;
 
@@ -19,13 +25,34 @@ namespace Emqo.NoNameTag.Utilities
                 return false;
             }
 
-            if (!HexColorRegex.IsMatch(color))
-            {
-                error = $"Invalid hex color format: {color}. Expected format: #RRGGBB or RRGGBB";
-                return false;
-            }
+            if (HexColorRegex.IsMatch(color) || IsUnityColorName(color))
+                return true;
 
-            return true;
+            error = $"Invalid color value: {color}. Expected #RRGGBB, RRGGBB, or a Unity color name";
+            return false;
+        }
+
+        private static bool IsUnityColorName(string color)
+        {
+            if (!UnityColorNameRegex.IsMatch(color))
+                return false;
+
+            switch (color.ToLowerInvariant())
+            {
+                case "black":
+                case "blue":
+                case "cyan":
+                case "gray":
+                case "grey":
+                case "green":
+                case "magenta":
+                case "red":
+                case "white":
+                case "yellow":
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         public static bool ValidatePermission(string permission, out string error)
@@ -70,19 +97,19 @@ namespace Emqo.NoNameTag.Utilities
                 return false;
             }
 
-            if (!string.IsNullOrEmpty(effect.PrefixColor) && !ValidateHexColor(effect.PrefixColor, out error))
+            if (!string.IsNullOrEmpty(effect.PrefixColor) && !ValidateColorValue(effect.PrefixColor, out error))
             {
                 error = $"PrefixColor: {error}";
                 return false;
             }
 
-            if (!string.IsNullOrEmpty(effect.NameColor) && !ValidateHexColor(effect.NameColor, out error))
+            if (!string.IsNullOrEmpty(effect.NameColor) && !ValidateColorValue(effect.NameColor, out error))
             {
                 error = $"NameColor: {error}";
                 return false;
             }
 
-            if (!string.IsNullOrEmpty(effect.SuffixColor) && !ValidateHexColor(effect.SuffixColor, out error))
+            if (!string.IsNullOrEmpty(effect.SuffixColor) && !ValidateColorValue(effect.SuffixColor, out error))
             {
                 error = $"SuffixColor: {error}";
                 return false;
@@ -129,7 +156,7 @@ namespace Emqo.NoNameTag.Utilities
                 return false;
             }
 
-            if (!string.IsNullOrEmpty(config.DefaultNameColor) && !ValidateHexColor(config.DefaultNameColor, out error))
+            if (!string.IsNullOrEmpty(config.DefaultNameColor) && !ValidateColorValue(config.DefaultNameColor, out error))
             {
                 error = $"DefaultNameColor: {error}";
                 return false;
@@ -165,6 +192,30 @@ namespace Emqo.NoNameTag.Utilities
                 return false;
             }
 
+            if (config.DeathMessage != null && !ValidateDeathMessage(config.DeathMessage, out error))
+            {
+                error = $"DeathMessage: {error}";
+                return false;
+            }
+
+            if (config.WelcomeMessage != null && !ValidateWelcomeMessage(config.WelcomeMessage, out error))
+            {
+                error = $"WelcomeMessage: {error}";
+                return false;
+            }
+
+            if (config.TextCommands != null)
+            {
+                for (int i = 0; i < config.TextCommands.Count; i++)
+                {
+                    if (!ValidateTextCommand(config.TextCommands[i], out error))
+                    {
+                        error = $"TextCommand[{i}]: {error}";
+                        return false;
+                    }
+                }
+            }
+
             return true;
         }
 
@@ -178,7 +229,7 @@ namespace Emqo.NoNameTag.Utilities
                 return false;
             }
 
-            if (!string.IsNullOrWhiteSpace(settings.DisplayColor) && !ValidateHexColor(settings.DisplayColor, out error))
+            if (!string.IsNullOrWhiteSpace(settings.DisplayColor) && !ValidateColorValue(settings.DisplayColor, out error))
             {
                 error = $"DisplayColor: {error}";
                 return false;
@@ -252,11 +303,53 @@ namespace Emqo.NoNameTag.Utilities
                     return false;
                 }
 
-                if (message.DelaySeconds < 0)
+                if (!string.IsNullOrWhiteSpace(message.FontColor) && !ValidateColorValue(message.FontColor, out error))
                 {
-                    error = $"BroadcastGroup '{group.Name}' message[{i}] DelaySeconds cannot be negative";
+                    error = $"BroadcastGroup '{group.Name}' message[{i}] FontColor: {error}";
                     return false;
                 }
+            }
+
+            return true;
+        }
+
+        private static bool ValidateDeathMessage(DeathMessageConfig config, out string error)
+        {
+            error = null;
+            if (!string.IsNullOrWhiteSpace(config.FontColor) && !ValidateColorValue(config.FontColor, out error))
+            {
+                error = $"FontColor: {error}";
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool ValidateWelcomeMessage(WelcomeMessageConfig config, out string error)
+        {
+            error = null;
+            if (!string.IsNullOrWhiteSpace(config.Color) && !ValidateColorValue(config.Color, out error))
+            {
+                error = $"Color: {error}";
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(config.LeaveColor) && !ValidateColorValue(config.LeaveColor, out error))
+            {
+                error = $"LeaveColor: {error}";
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool ValidateTextCommand(TextCommandConfig config, out string error)
+        {
+            error = null;
+            if (!string.IsNullOrWhiteSpace(config.Color) && !ValidateColorValue(config.Color, out error))
+            {
+                error = $"Color: {error}";
+                return false;
             }
 
             return true;

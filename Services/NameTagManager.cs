@@ -44,8 +44,9 @@ namespace Emqo.NoNameTag.Services
                     _playerEffects.TryRemove(steamId, out _);
                 }
 
+                var safePlayerName = RichTextSanitizer.SanitizeUntrustedPlayerText(player.DisplayName);
                 _formattedPlayerNames[steamId] = NameFormatter.FormatPlayerName(
-                    player.DisplayName,
+                    safePlayerName,
                     steamId,
                     group?.DisplayEffect
                 );
@@ -103,7 +104,8 @@ namespace Emqo.NoNameTag.Services
             // 聊天热路径的降级分支：不要调用 FormatPlayerName / GetPlayerStats，
             // 避免缓存未命中时把聊天消息变成数据库读取路径。
             var group = GetPlayerEffect(steamId);
-            return NameFormatter.FormatPlayerNameWithoutStats(fallbackPlayerName, group?.DisplayEffect);
+            var safePlayerName = RichTextSanitizer.SanitizeUntrustedPlayerText(fallbackPlayerName);
+            return NameFormatter.FormatPlayerNameWithoutStats(safePlayerName, group?.DisplayEffect);
         }
 
         public void ClearAll()

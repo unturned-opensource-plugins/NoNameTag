@@ -5,7 +5,7 @@
 	  <LangVersion>latest</LangVersion>
 	  <RootNamespace>Emqo.NoNameTag</RootNamespace>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,14 +13,17 @@
     <Compile Remove="RichMessageAnnouncer-master\**" />
     <Compile Remove="参考插件\**" />
     <Compile Remove="artifacts\**" />
+    <Compile Remove="tests\**" />
     <EmbeddedResource Remove="lib\**" />
     <EmbeddedResource Remove="RichMessageAnnouncer-master\**" />
     <EmbeddedResource Remove="参考插件\**" />
     <EmbeddedResource Remove="artifacts\**" />
+    <EmbeddedResource Remove="tests\**" />
     <None Remove="lib\**" />
     <None Remove="RichMessageAnnouncer-master\**" />
     <None Remove="参考插件\**" />
     <None Remove="artifacts\**" />
+    <None Remove="tests\**" />
   </ItemGroup>
 
   <ItemGroup>

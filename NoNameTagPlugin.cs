@@ -7,7 +7,6 @@ using Rocket.Unturned.Player;
 using SDG.Unturned;
 using Steamworks;
 using System;
-using System.Text;
 using UnityEngine;
 using Logger = Emqo.NoNameTag.Utilities.PluginLogger;
 
@@ -182,6 +181,7 @@ namespace Emqo.NoNameTag
         {
             BroadcastService?.SendLeaveMessage(player);
             DamageAttributionService?.ClearVictim(player.CSteamID.m_SteamID);
+            PlayerStatsService?.ReleasePlayer(player.CSteamID.m_SteamID);
             NameTagManager.RemoveDisplayEffect(player);
             PermissionService?.ClearPlayerCache(player.CSteamID.m_SteamID);
         }
@@ -273,7 +273,7 @@ namespace Emqo.NoNameTag
             string avatarUrl = null;
 
             // 过滤玩家输入中的富文本标签，防止 Rich Text 注入
-            var safeMessage = SanitizeChatMessage(message);
+            var safeMessage = RichTextSanitizer.SanitizeUntrustedPlayerText(message);
 
             // 根据聊天模式添加 [A]/[G] 前缀
             string modePrefix = "";
@@ -286,33 +286,6 @@ namespace Emqo.NoNameTag
             string finalMessage = $"{modePrefix}{formattedName}: {safeMessage}";
 
             return (finalMessage, avatarUrl);
-        }
-
-        private static string SanitizeChatMessage(string message)
-        {
-            if (string.IsNullOrEmpty(message))
-                return string.Empty;
-
-            StringBuilder builder = null;
-            for (var i = 0; i < message.Length; i++)
-            {
-                var c = message[i];
-                var isBlocked = c == '<' || c == '>' || c == '{' || c == '}';
-                if (!isBlocked)
-                {
-                    builder?.Append(c);
-                    continue;
-                }
-
-                if (builder == null)
-                {
-                    builder = new StringBuilder(message.Length);
-                    if (i > 0)
-                        builder.Append(message, 0, i);
-                }
-            }
-
-            return builder == null ? message : builder.ToString();
         }
 
         private void OnPlayerDied(PlayerLife sender, EDeathCause cause, ELimb limb, CSteamID instigator)

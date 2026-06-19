@@ -1,26 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<NoNameTagConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<NoNameTagConfiguration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Enabled>true</Enabled>
   <DebugMode>false</DebugMode>
   <DefaultNameColor>#FFFFFF</DefaultNameColor>
   <ApplyToChatMessages>true</ApplyToChatMessages>
-  <ApplyToNameTags>true</ApplyToNameTags>
   <PriorityMode>HighestPriority</PriorityMode>
 
-  <!-- 头像设置（新增功能） -->
-  <AvatarSettings>
-    <Enabled>true</Enabled>
-    <ChatAvatarSize>16</ChatAvatarSize>
-    <DefaultChatAvatar>👤</DefaultChatAvatar>
-  </AvatarSettings>
-
-  <!-- 权限组配置（原有功能） -->
   <PermissionGroups>
     <PermissionGroup permission="nonametag.vip" priority="10">
       <DisplayEffect>
         <Prefix>[VIP] </Prefix>
         <PrefixColor>#FFD700</PrefixColor>
-        <NameColor>#00FF00</NameColor>
+        <NameColor>green</NameColor>
         <Suffix></Suffix>
         <SuffixColor>#FFFFFF</SuffixColor>
       </DisplayEffect>
@@ -28,19 +19,20 @@
     <PermissionGroup permission="nonametag.mvp" priority="20">
       <DisplayEffect>
         <Prefix>[MVP] </Prefix>
-        <PrefixColor>#FF4500</PrefixColor>
+        <PrefixColor>yellow</PrefixColor>
         <NameColor>#00BFFF</NameColor>
         <Suffix> *</Suffix>
-        <SuffixColor>#FF4500</SuffixColor>
+        <SuffixColor>yellow</SuffixColor>
       </DisplayEffect>
     </PermissionGroup>
   </PermissionGroups>
 
-  <!-- 死亡消息配置（增强版，支持可见性控制） -->
   <DeathMessage>
     <Enabled>true</Enabled>
-    <!-- 可见性控制：All, KillerOnly, VictimOnly, KillerAndVictimOnly -->
+    <DisplayMode>Chat</DisplayMode>
     <Visibility>All</Visibility>
+    <FontColor></FontColor>
+    <FontSize>0</FontSize>
     <Format>{killer} 击杀了 {victim}</Format>
     <SelfKillFormat>{victim} 自杀了</SelfKillFormat>
     <BleedingFormat>{victim} 流血致死</BleedingFormat>
@@ -54,39 +46,50 @@
     <FoodFormat>{victim} 饿死了</FoodFormat>
     <WaterFormat>{victim} 渴死了</WaterFormat>
     <InfectionFormat>{victim} 感染致死</InfectionFormat>
+    <GunFormat>{victim} 被 {killer} 射杀</GunFormat>
+    <MeleeFormat>{victim} 被 {killer} 砍死</MeleeFormat>
+    <PunchFormat>{victim} 被 {killer} 打死</PunchFormat>
+    <GrenadeFormat>{victim} 被 {killer} 炸死</GrenadeFormat>
+    <HeadshotTag> [爆头]</HeadshotTag>
     <DefaultFormat>{victim} 死亡了</DefaultFormat>
   </DeathMessage>
 
-  <!-- 广播组配置（新增功能，仅支持全员可见） -->
   <BroadcastGroups>
-    <!-- 公告组1：服务器规则（带 Emoji 头像） -->
-    <BroadcastGroup name="server_rules" enabled="true">
-      <RotationInterval>120</RotationInterval>
-      <Messages>
-        <Message avatar="🛡️" avatarPosition="Left">欢迎来到服务器！请遵守规则。</Message>
-        <Message avatar="❓" avatarPosition="Left">使用 /help 查看可用命令。</Message>
-        <Message avatar="🚫" avatarPosition="Left">禁止恶意破坏和骚扰其他玩家。</Message>
-      </Messages>
-    </BroadcastGroup>
-
-    <!-- 公告组2：VIP 公告（带 Sprite 头像） -->
-    <BroadcastGroup name="vip_announcements" enabled="true">
-      <RotationInterval>180</RotationInterval>
-      <Messages>
-        <Message avatar="icon_vip" avatarPosition="Left">VIP玩家专属福利：每日登录获得奖励！</Message>
-        <Message avatar="icon_vip" avatarPosition="Left">VIP玩家可使用特殊前缀和颜色。</Message>
-      </Messages>
-    </BroadcastGroup>
-
-    <!-- 公告组3：无头像公告 -->
-    <BroadcastGroup name="death_tips" enabled="false">
+    <BroadcastGroup name="server_tips" enabled="true" displayMode="Chat">
       <RotationInterval>300</RotationInterval>
       <Messages>
-        <Message>提示：死亡后可以使用 /respawn 快速复活</Message>
-        <Message>提示：保存物品到安全屋避免丢失</Message>
+        <Message>
+          <Message>欢迎来到服务器！请遵守规则。</Message>
+          <FontColor>white</FontColor>
+          <FontSize>0</FontSize>
+          <Avatar>{server_icon}</Avatar>
+          <AvatarPosition>Left</AvatarPosition>
+        </Message>
+        <Message>
+          <Message>使用 /help 查看可用命令。</Message>
+          <FontColor>#FFFF00</FontColor>
+          <FontSize>0</FontSize>
+          <Avatar>{server_icon}</Avatar>
+          <AvatarPosition>Left</AvatarPosition>
+        </Message>
       </Messages>
     </BroadcastGroup>
   </BroadcastGroups>
+
+  <WelcomeMessage enabled="true">
+    <Text>欢迎 {player} 加入服务器！</Text>
+    <IconUrl>{server_icon}</IconUrl>
+    <Color>white</Color>
+    <FontSize>0</FontSize>
+    <EnableJoinLink>false</EnableJoinLink>
+    <JoinLinkUrl></JoinLinkUrl>
+    <JoinLinkMessage></JoinLinkMessage>
+    <EnableLeaveMessage>true</EnableLeaveMessage>
+    <LeaveText>{player} 离开了服务器</LeaveText>
+    <LeaveIconUrl>{server_icon}</LeaveIconUrl>
+    <LeaveColor>white</LeaveColor>
+    <LeaveFontSize>0</LeaveFontSize>
+  </WelcomeMessage>
 
   <StatsSettings>
     <Enabled>true</Enabled>
@@ -99,4 +102,21 @@
     <BleedHitRetentionSeconds>15</BleedHitRetentionSeconds>
     <BleedSourceRetentionSeconds>180</BleedSourceRetentionSeconds>
   </StatsSettings>
+
+  <TextCommands>
+    <TextCommand>
+      <Name>rules</Name>
+      <Message>请遵守服务器规则！</Message>
+      <IconUrl>{server_icon}</IconUrl>
+      <Color>white</Color>
+    </TextCommand>
+  </TextCommands>
+
+  <WebCommands>
+    <WebCommand>
+      <Name>website</Name>
+      <Url>https://example.com</Url>
+      <Description>访问我们的网站</Description>
+    </WebCommand>
+  </WebCommands>
 </NoNameTagConfiguration>

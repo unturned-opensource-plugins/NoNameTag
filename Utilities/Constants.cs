@@ -56,7 +56,5 @@ namespace Emqo.NoNameTag.Utilities
         /// <summary>默认应用到聊天消息</summary>
         public const bool DefaultApplyToChatMessages = true;
 
-        /// <summary>默认应用到名称标签</summary>
-        public const bool DefaultApplyToNameTags = true;
     }
 }

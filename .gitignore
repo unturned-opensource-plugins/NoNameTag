@@ -64,3 +64,9 @@ _ReSharper*/
 AGENTS.md
 CLAUDE.md
 .dotnet/
+
+############################
+# Python test cache
+############################
+__pycache__/
+.pytest_cache/
