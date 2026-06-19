@@ -8,11 +8,11 @@ namespace Emqo.NoNameTag.Services
     {
         private const float LocalChatRangeSqr = 4096f;
 
-        private readonly NoNameTagConfiguration _config;
+        private readonly IChatMessageSettings _config;
         private readonly IFormattedNameProvider _formattedNameProvider;
         private readonly IChatMessageSender _sender;
 
-        public ChatMessageService(NoNameTagConfiguration config, IFormattedNameProvider formattedNameProvider, IChatMessageSender sender)
+        public ChatMessageService(IChatMessageSettings config, IFormattedNameProvider formattedNameProvider, IChatMessageSender sender)
         {
             _config = config;
             _formattedNameProvider = formattedNameProvider;

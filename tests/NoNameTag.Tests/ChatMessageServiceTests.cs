@@ -116,9 +116,9 @@ namespace Emqo.NoNameTag.Tests
             return new ChatMessagePosition(x, y, z);
         }
 
-        private static NoNameTagConfiguration DefaultConfig()
+        private static IChatMessageSettings DefaultConfig()
         {
-            return new NoNameTagConfiguration
+            return new TestChatMessageSettings
             {
                 Enabled = true,
                 ApplyToChatMessages = true
@@ -134,6 +134,12 @@ namespace Emqo.NoNameTag.Tests
                 GroupId = groupId,
                 Position = position
             };
+        }
+
+        private sealed class TestChatMessageSettings : IChatMessageSettings
+        {
+            public bool Enabled { get; set; }
+            public bool ApplyToChatMessages { get; set; }
         }
 
         private sealed class SpyChatMessageSender : IChatMessageSender

@@ -100,8 +100,9 @@ namespace Emqo.NoNameTag
         {
             PermissionService = new PermissionService(Configuration.Instance);
             PlayerStatsService = new PlayerStatsService(Configuration.Instance.StatsSettings);
-            DamageAttributionService = new DamageAttributionService(Configuration.Instance.StatsSettings);
-            DeathAttributionResolver = new DeathAttributionResolver(DamageAttributionService);
+            var damageAttributionService = new DamageAttributionService(Configuration.Instance.StatsSettings);
+            DamageAttributionService = damageAttributionService;
+            DeathAttributionResolver = new DeathAttributionResolver(damageAttributionService);
             NameTagManager = new NameTagManager(Configuration.Instance, PermissionService);
             ChatMessageService = new ChatMessageService(Configuration.Instance, NameTagManager, new RuntimeChatMessageSender());
             BroadcastService = new BroadcastService(Configuration.Instance, NameTagManager);
@@ -298,6 +299,43 @@ namespace Emqo.NoNameTag
             return new ChatMessagePosition(position.x, position.y, position.z);
         }
 
+        private static DeathAttributionCause ToDeathAttributionCause(EDeathCause cause)
+        {
+            switch (cause)
+            {
+                case EDeathCause.BLEEDING:
+                    return DeathAttributionCause.Bleeding;
+                case EDeathCause.BURNING:
+                    return DeathAttributionCause.Burning;
+                case EDeathCause.BURNER:
+                    return DeathAttributionCause.Burner;
+                case EDeathCause.CHARGE:
+                    return DeathAttributionCause.Charge;
+                case EDeathCause.GRENADE:
+                    return DeathAttributionCause.Grenade;
+                case EDeathCause.LANDMINE:
+                    return DeathAttributionCause.Landmine;
+                case EDeathCause.MISSILE:
+                    return DeathAttributionCause.Missile;
+                case EDeathCause.ROADKILL:
+                    return DeathAttributionCause.Roadkill;
+                case EDeathCause.SPLASH:
+                    return DeathAttributionCause.Splash;
+                case EDeathCause.VEHICLE:
+                    return DeathAttributionCause.Vehicle;
+                case EDeathCause.GUN:
+                    return DeathAttributionCause.Gun;
+                case EDeathCause.MELEE:
+                    return DeathAttributionCause.Melee;
+                case EDeathCause.PUNCH:
+                    return DeathAttributionCause.Punch;
+                case EDeathCause.ZOMBIE:
+                    return DeathAttributionCause.Zombie;
+                default:
+                    return DeathAttributionCause.Unknown;
+            }
+        }
+
         private void OnPlayerDied(PlayerLife sender, EDeathCause cause, ELimb limb, CSteamID instigator)
         {
             if (!Configuration.Instance.Enabled) return;
@@ -309,7 +347,7 @@ namespace Emqo.NoNameTag
                 {
                     VictimSteamId = victimSteamId,
                     InstigatorSteamId = instigator.m_SteamID,
-                    Cause = cause
+                    Cause = ToDeathAttributionCause(cause)
                 }) ?? DeathAttributionContext.Empty;
 
                 if (victimSteamId != 0)

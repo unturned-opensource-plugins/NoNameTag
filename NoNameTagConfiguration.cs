@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Xml.Serialization;
 using Emqo.NoNameTag.Models;
+using Emqo.NoNameTag.Services;
 using Rocket.API;
 
 namespace Emqo.NoNameTag
@@ -11,7 +12,7 @@ namespace Emqo.NoNameTag
         HighestPriority
     }
 
-    public class NoNameTagConfiguration : IRocketPluginConfiguration
+    public class NoNameTagConfiguration : IRocketPluginConfiguration, IChatMessageSettings
     {
         public bool Enabled { get; set; } = true;
 

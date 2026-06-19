@@ -1,7 +1,4 @@
-using System;
-using Emqo.NoNameTag.Models;
 using Emqo.NoNameTag.Services;
-using SDG.Unturned;
 using Xunit;
 
 namespace Emqo.NoNameTag.Tests
@@ -11,16 +8,17 @@ namespace Emqo.NoNameTag.Tests
         [Fact]
         public void DirectInstigator_TakesPrecedenceOverBleedAttribution()
         {
-            var damage = new DamageAttributionService(new StatsSettingsConfig { Enabled = true });
-            damage.RecordAttributedHit(2, 1, EDeathCause.GUN, "Rifle", 15, DateTimeOffset.UtcNow);
-            damage.HandleBleedingStateChanged(1, true, DateTimeOffset.UtcNow);
-            var resolver = new DeathAttributionResolver(damage);
+            var source = new StubDeathAttributionSource
+            {
+                BleedRecord = Record(2, "Rifle", 15)
+            };
+            var resolver = new DeathAttributionResolver(source);
 
             var attribution = resolver.Resolve(new DeathAttributionRequest
             {
                 VictimSteamId = 1,
                 InstigatorSteamId = 3,
-                Cause = EDeathCause.BLEEDING
+                Cause = DeathAttributionCause.Bleeding
             });
 
             Assert.Equal(3UL, attribution.KillerSteamId);
@@ -31,17 +29,17 @@ namespace Emqo.NoNameTag.Tests
         [Fact]
         public void BleedingDeath_UsesActiveBleedAttributionWhenNoDirectInstigatorExists()
         {
-            var now = DateTimeOffset.UtcNow;
-            var damage = new DamageAttributionService(new StatsSettingsConfig { Enabled = true });
-            damage.RecordAttributedHit(2, 1, EDeathCause.GUN, "Rifle", 15, now);
-            damage.HandleBleedingStateChanged(1, true, now);
-            var resolver = new DeathAttributionResolver(damage);
+            var source = new StubDeathAttributionSource
+            {
+                BleedRecord = Record(2, "Rifle", 15)
+            };
+            var resolver = new DeathAttributionResolver(source);
 
             var attribution = resolver.Resolve(new DeathAttributionRequest
             {
                 VictimSteamId = 1,
                 InstigatorSteamId = 0,
-                Cause = EDeathCause.BLEEDING
+                Cause = DeathAttributionCause.Bleeding
             });
 
             Assert.Equal(2UL, attribution.KillerSteamId);
@@ -53,15 +51,17 @@ namespace Emqo.NoNameTag.Tests
         [Fact]
         public void SupportedDelayedCause_UsesRecentAttribution()
         {
-            var damage = new DamageAttributionService(new StatsSettingsConfig { Enabled = true });
-            damage.RecordAttributedHit(2, 1, EDeathCause.GRENADE, "Grenade", 9, DateTimeOffset.UtcNow);
-            var resolver = new DeathAttributionResolver(damage);
+            var source = new StubDeathAttributionSource
+            {
+                RecentRecord = Record(2, "Grenade", 9)
+            };
+            var resolver = new DeathAttributionResolver(source);
 
             var attribution = resolver.Resolve(new DeathAttributionRequest
             {
                 VictimSteamId = 1,
                 InstigatorSteamId = 0,
-                Cause = EDeathCause.GRENADE
+                Cause = DeathAttributionCause.Grenade
             });
 
             Assert.Equal(2UL, attribution.KillerSteamId);
@@ -73,13 +73,13 @@ namespace Emqo.NoNameTag.Tests
         [Fact]
         public void SelfKill_DoesNotProduceKillerCredit()
         {
-            var resolver = new DeathAttributionResolver(new DamageAttributionService(new StatsSettingsConfig { Enabled = true }));
+            var resolver = new DeathAttributionResolver(new StubDeathAttributionSource());
 
             var attribution = resolver.Resolve(new DeathAttributionRequest
             {
                 VictimSteamId = 1,
                 InstigatorSteamId = 1,
-                Cause = EDeathCause.GUN
+                Cause = DeathAttributionCause.Gun
             });
 
             Assert.Null(attribution.KillerSteamId);
@@ -89,17 +89,45 @@ namespace Emqo.NoNameTag.Tests
         [Fact]
         public void MissingKiller_ReturnsEmptyAttributionForUnsupportedCause()
         {
-            var resolver = new DeathAttributionResolver(new DamageAttributionService(new StatsSettingsConfig { Enabled = true }));
+            var resolver = new DeathAttributionResolver(new StubDeathAttributionSource());
 
             var attribution = resolver.Resolve(new DeathAttributionRequest
             {
                 VictimSteamId = 1,
                 InstigatorSteamId = 0,
-                Cause = EDeathCause.ZOMBIE
+                Cause = DeathAttributionCause.Zombie
             });
 
             Assert.Null(attribution.KillerSteamId);
             Assert.Equal(DeathAttributionSource.None, attribution.Source);
+        }
+
+        private static DeathAttributionRecord Record(ulong attackerSteamId, string weaponName, int distanceMeters)
+        {
+            return new DeathAttributionRecord
+            {
+                AttackerSteamId = attackerSteamId,
+                WeaponName = weaponName,
+                DistanceMeters = distanceMeters
+            };
+        }
+
+        private sealed class StubDeathAttributionSource : IDeathAttributionSource
+        {
+            public DeathAttributionRecord BleedRecord { get; set; }
+            public DeathAttributionRecord RecentRecord { get; set; }
+
+            public bool TryGetBleedDeathAttribution(ulong victimSteamId, out DeathAttributionRecord record)
+            {
+                record = BleedRecord;
+                return record != null;
+            }
+
+            public bool TryGetRecentDeathAttribution(ulong victimSteamId, out DeathAttributionRecord record)
+            {
+                record = RecentRecord;
+                return record != null;
+            }
         }
     }
 }

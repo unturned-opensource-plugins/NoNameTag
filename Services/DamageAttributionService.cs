@@ -8,7 +8,7 @@ using Steamworks;
 
 namespace Emqo.NoNameTag.Services
 {
-    public sealed class DamageAttributionService : IDamageAttributionService
+    public sealed class DamageAttributionService : IDamageAttributionService, IDeathAttributionSource
     {
         private static readonly TimeSpan CleanupInterval = TimeSpan.FromSeconds(5);
         private static readonly string[] AttackerMemberNames = { "killer", "instigator", "attacker", "sender", "source" };
@@ -183,6 +183,30 @@ namespace Emqo.NoNameTag.Services
             return false;
         }
 
+        public bool TryGetBleedDeathAttribution(ulong victimSteamId, out DeathAttributionRecord record)
+        {
+            if (TryGetBleedAttribution(victimSteamId, out var bleedRecord))
+            {
+                record = ToDeathAttributionRecord(bleedRecord);
+                return true;
+            }
+
+            record = null;
+            return false;
+        }
+
+        public bool TryGetRecentDeathAttribution(ulong victimSteamId, out DeathAttributionRecord record)
+        {
+            if (TryGetRecentAttribution(victimSteamId, out var recentRecord))
+            {
+                record = ToDeathAttributionRecord(recentRecord);
+                return true;
+            }
+
+            record = null;
+            return false;
+        }
+
         public bool TryGetRecentKillerSteamId(ulong victimSteamId, out ulong killerSteamId)
         {
             if (TryGetRecentAttribution(victimSteamId, out var activeRecord))
@@ -258,6 +282,16 @@ namespace Emqo.NoNameTag.Services
         private static bool IsTrackablePair(ulong attackerSteamId, ulong victimSteamId)
         {
             return attackerSteamId != 0 && victimSteamId != 0 && attackerSteamId != victimSteamId;
+        }
+
+        private static DeathAttributionRecord ToDeathAttributionRecord(BleedAttributionRecord record)
+        {
+            return new DeathAttributionRecord
+            {
+                AttackerSteamId = record.AttackerSteamId,
+                WeaponName = record.WeaponName,
+                DistanceMeters = record.DistanceMeters
+            };
         }
 
         private static bool TryResolveSteamId(object source, string[] preferredMembers, out ulong steamId)

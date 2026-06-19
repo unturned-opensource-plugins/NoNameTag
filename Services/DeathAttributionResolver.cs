@@ -1,15 +1,12 @@
-using Emqo.NoNameTag.Models;
-using SDG.Unturned;
-
 namespace Emqo.NoNameTag.Services
 {
     public sealed class DeathAttributionResolver : IDeathAttributionResolver
     {
-        private readonly IDamageAttributionService _damageAttributionService;
+        private readonly IDeathAttributionSource _attributionSource;
 
-        public DeathAttributionResolver(IDamageAttributionService damageAttributionService)
+        public DeathAttributionResolver(IDeathAttributionSource attributionSource)
         {
-            _damageAttributionService = damageAttributionService;
+            _attributionSource = attributionSource;
         }
 
         public DeathAttributionContext Resolve(DeathAttributionRequest request)
@@ -27,17 +24,17 @@ namespace Emqo.NoNameTag.Services
                 };
             }
 
-            if (request.Cause == EDeathCause.BLEEDING
-                && _damageAttributionService != null
-                && _damageAttributionService.TryGetBleedAttribution(request.VictimSteamId, out var bleedAttribution)
+            if (request.Cause == DeathAttributionCause.Bleeding
+                && _attributionSource != null
+                && _attributionSource.TryGetBleedDeathAttribution(request.VictimSteamId, out var bleedAttribution)
                 && IsValidKiller(bleedAttribution.AttackerSteamId, request.VictimSteamId))
             {
                 return FromRecord(request.VictimSteamId, bleedAttribution, DeathAttributionSource.BleedAttribution);
             }
 
             if (SupportsRecentAttribution(request.Cause)
-                && _damageAttributionService != null
-                && _damageAttributionService.TryGetRecentAttribution(request.VictimSteamId, out var recentAttribution)
+                && _attributionSource != null
+                && _attributionSource.TryGetRecentDeathAttribution(request.VictimSteamId, out var recentAttribution)
                 && IsValidKiller(recentAttribution.AttackerSteamId, request.VictimSteamId))
             {
                 return FromRecord(request.VictimSteamId, recentAttribution, DeathAttributionSource.RecentAttribution);
@@ -46,26 +43,26 @@ namespace Emqo.NoNameTag.Services
             return CreateEmpty(request.VictimSteamId);
         }
 
-        public static bool SupportsRecentAttribution(EDeathCause cause)
+        public static bool SupportsRecentAttribution(DeathAttributionCause cause)
         {
             switch (cause)
             {
-                case EDeathCause.GRENADE:
-                case EDeathCause.MISSILE:
-                case EDeathCause.CHARGE:
-                case EDeathCause.SPLASH:
-                case EDeathCause.LANDMINE:
-                case EDeathCause.VEHICLE:
-                case EDeathCause.ROADKILL:
-                case EDeathCause.BURNING:
-                case EDeathCause.BURNER:
+                case DeathAttributionCause.Grenade:
+                case DeathAttributionCause.Missile:
+                case DeathAttributionCause.Charge:
+                case DeathAttributionCause.Splash:
+                case DeathAttributionCause.Landmine:
+                case DeathAttributionCause.Vehicle:
+                case DeathAttributionCause.Roadkill:
+                case DeathAttributionCause.Burning:
+                case DeathAttributionCause.Burner:
                     return true;
                 default:
                     return false;
             }
         }
 
-        private static DeathAttributionContext FromRecord(ulong victimSteamId, BleedAttributionRecord record, DeathAttributionSource source)
+        private static DeathAttributionContext FromRecord(ulong victimSteamId, DeathAttributionRecord record, DeathAttributionSource source)
         {
             return new DeathAttributionContext
             {
