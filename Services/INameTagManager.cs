@@ -35,6 +35,11 @@ namespace Emqo.NoNameTag.Services
         PermissionGroupConfig GetPlayerEffect(ulong steamId);
 
         /// <summary>
+        /// 获取缓存后的显示名（聊天热路径使用；缓存未命中时不读取统计，避免每条消息触发数据库读取）
+        /// </summary>
+        string GetFormattedPlayerName(ulong steamId, string fallbackPlayerName);
+
+        /// <summary>
         /// 清除所有缓存
         /// </summary>
         void ClearAll();

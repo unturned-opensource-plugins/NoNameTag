@@ -15,6 +15,7 @@ namespace Emqo.NoNameTag.Services
         private readonly NoNameTagConfiguration _config;
         private readonly IPermissionService _permissionService;
         private readonly ConcurrentDictionary<ulong, PermissionGroupConfig> _playerEffects;
+        private readonly ConcurrentDictionary<ulong, string> _formattedPlayerNames;
         private const int MaxCacheSize = Constants.MaxPlayerCacheSize;
 
         public NameTagManager(NoNameTagConfiguration config, IPermissionService permissionService)
@@ -22,6 +23,7 @@ namespace Emqo.NoNameTag.Services
             _config = config;
             _permissionService = permissionService;
             _playerEffects = new ConcurrentDictionary<ulong, PermissionGroupConfig>();
+            _formattedPlayerNames = new ConcurrentDictionary<ulong, string>();
         }
 
         public void ApplyDisplayEffect(UnturnedPlayer player)
@@ -31,11 +33,22 @@ namespace Emqo.NoNameTag.Services
             try
             {
                 var group = _permissionService.GetPlayerPermissionGroup(player);
+                var steamId = player.CSteamID.m_SteamID;
                 if (group != null)
                 {
-                    _playerEffects[player.CSteamID.m_SteamID] = group;
+                    _playerEffects[steamId] = group;
                     Logger.Debug($"Applied display effect to {player.DisplayName}: {group.Permission}");
                 }
+                else
+                {
+                    _playerEffects.TryRemove(steamId, out _);
+                }
+
+                _formattedPlayerNames[steamId] = NameFormatter.FormatPlayerName(
+                    player.DisplayName,
+                    steamId,
+                    group?.DisplayEffect
+                );
             }
             catch (Exception ex)
             {
@@ -49,8 +62,9 @@ namespace Emqo.NoNameTag.Services
 
             var steamId = player.CSteamID.m_SteamID;
             _playerEffects.TryRemove(steamId, out _);
+            _formattedPlayerNames.TryRemove(steamId, out _);
 
-            if (_playerEffects.Count > MaxCacheSize)
+            if (_playerEffects.Count > MaxCacheSize || _formattedPlayerNames.Count > MaxCacheSize)
             {
                 CleanupCache();
             }
@@ -59,6 +73,7 @@ namespace Emqo.NoNameTag.Services
         public void RefreshAllPlayers()
         {
             _playerEffects.Clear();
+            _formattedPlayerNames.Clear();
             foreach (var client in Provider.clients)
             {
                 var player = UnturnedPlayer.FromSteamPlayer(client);
@@ -80,9 +95,21 @@ namespace Emqo.NoNameTag.Services
             return group;
         }
 
+        public string GetFormattedPlayerName(ulong steamId, string fallbackPlayerName)
+        {
+            if (steamId != 0 && _formattedPlayerNames.TryGetValue(steamId, out var formattedName))
+                return formattedName;
+
+            // 聊天热路径的降级分支：不要调用 FormatPlayerName / GetPlayerStats，
+            // 避免缓存未命中时把聊天消息变成数据库读取路径。
+            var group = GetPlayerEffect(steamId);
+            return NameFormatter.FormatPlayerNameWithoutStats(fallbackPlayerName, group?.DisplayEffect);
+        }
+
         public void ClearAll()
         {
             _playerEffects.Clear();
+            _formattedPlayerNames.Clear();
         }
 
         private void CleanupCache()
@@ -96,15 +123,18 @@ namespace Emqo.NoNameTag.Services
             }
 
             var keysToRemove = _playerEffects.Keys
+                .Concat(_formattedPlayerNames.Keys)
+                .Distinct()
                 .Where(k => !onlineSteamIds.Contains(k))
                 .ToList();
 
             foreach (var key in keysToRemove)
             {
                 _playerEffects.TryRemove(key, out _);
+                _formattedPlayerNames.TryRemove(key, out _);
             }
 
-            Logger.Debug($"Cleaned up {keysToRemove.Count} offline player entries. Cache size: {_playerEffects.Count}");
+            Logger.Debug($"Cleaned up {keysToRemove.Count} offline player entries. Cache size: {_playerEffects.Count}, formatted names: {_formattedPlayerNames.Count}");
         }
     }
 }

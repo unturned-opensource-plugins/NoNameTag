@@ -7,6 +7,7 @@ using Rocket.Unturned.Player;
 using SDG.Unturned;
 using Steamworks;
 using System;
+using System.Text;
 using UnityEngine;
 using Logger = Emqo.NoNameTag.Utilities.PluginLogger;
 
@@ -205,6 +206,7 @@ namespace Emqo.NoNameTag
 
                 cancel = true;
                 Logger.Debug($"Chat message - Player: {player.DisplayName}, SteamID: {player.CSteamID.m_SteamID}, ChatMode: {chatMode}, Message: {formattedMessage}", LogCategory.Plugin);
+                var senderSteamPlayer = player.SteamPlayer();
 
                 // 根据聊天模式决定发送范围
                 switch (chatMode)
@@ -218,7 +220,7 @@ namespace Emqo.NoNameTag
                             // Unturned 区域聊天默认范围约 64m（sqrMagnitude = 4096）
                             if (distance <= 4096f)
                             {
-                                ChatManager.serverSendMessage(formattedMessage, Color.white, player.SteamPlayer(), client, EChatMode.LOCAL, avatarUrl, true);
+                                ChatManager.serverSendMessage(formattedMessage, Color.white, senderSteamPlayer, client, EChatMode.LOCAL, avatarUrl, true);
                             }
                         }
                         break;
@@ -229,17 +231,16 @@ namespace Emqo.NoNameTag
                         if (senderGroupId == CSteamID.Nil)
                         {
                             // 不在组里，只发给自己
-                            ChatManager.serverSendMessage(formattedMessage, Color.white, player.SteamPlayer(), player.SteamPlayer(), EChatMode.GROUP, avatarUrl, true);
+                            ChatManager.serverSendMessage(formattedMessage, Color.white, senderSteamPlayer, senderSteamPlayer, EChatMode.GROUP, avatarUrl, true);
                         }
                         else
                         {
                             foreach (var client in Provider.clients)
                             {
                                 if (client?.player == null) continue;
-                                var clientPlayer = UnturnedPlayer.FromSteamPlayer(client);
-                                if (clientPlayer?.Player?.quests?.groupID == senderGroupId)
+                                if (client.player.quests.groupID == senderGroupId)
                                 {
-                                    ChatManager.serverSendMessage(formattedMessage, Color.white, player.SteamPlayer(), client, EChatMode.GROUP, avatarUrl, true);
+                                    ChatManager.serverSendMessage(formattedMessage, Color.white, senderSteamPlayer, client, EChatMode.GROUP, avatarUrl, true);
                                 }
                             }
                         }
@@ -247,7 +248,7 @@ namespace Emqo.NoNameTag
 
                     default:
                         // GLOBAL / SAY：发给所有人
-                        ChatManager.serverSendMessage(formattedMessage, Color.white, player.SteamPlayer(), null, chatMode, avatarUrl, true);
+                        ChatManager.serverSendMessage(formattedMessage, Color.white, senderSteamPlayer, null, chatMode, avatarUrl, true);
                         break;
                 }
             }
@@ -266,18 +267,13 @@ namespace Emqo.NoNameTag
 
         private (string message, string avatarUrl) BuildFormattedChatMessage(UnturnedPlayer player, string message, EChatMode chatMode)
         {
-            var group = NameTagManager.GetPlayerEffect(player.CSteamID.m_SteamID);
-            var formattedName = NameFormatter.FormatPlayerName(
-                player.DisplayName,
-                player.CSteamID.m_SteamID,
-                group?.DisplayEffect
-            );
+            var formattedName = NameTagManager.GetFormattedPlayerName(player.CSteamID.m_SteamID, player.DisplayName);
 
             // 不设置 iconUrl，让 Unturned 自动显示玩家的 Steam 头像
             string avatarUrl = null;
 
             // 过滤玩家输入中的富文本标签，防止 Rich Text 注入
-            var safeMessage = message.Replace("<", "").Replace(">", "").Replace("{", "").Replace("}", "");
+            var safeMessage = SanitizeChatMessage(message);
 
             // 根据聊天模式添加 [A]/[G] 前缀
             string modePrefix = "";
@@ -292,6 +288,33 @@ namespace Emqo.NoNameTag
             return (finalMessage, avatarUrl);
         }
 
+        private static string SanitizeChatMessage(string message)
+        {
+            if (string.IsNullOrEmpty(message))
+                return string.Empty;
+
+            StringBuilder builder = null;
+            for (var i = 0; i < message.Length; i++)
+            {
+                var c = message[i];
+                var isBlocked = c == '<' || c == '>' || c == '{' || c == '}';
+                if (!isBlocked)
+                {
+                    builder?.Append(c);
+                    continue;
+                }
+
+                if (builder == null)
+                {
+                    builder = new StringBuilder(message.Length);
+                    if (i > 0)
+                        builder.Append(message, 0, i);
+                }
+            }
+
+            return builder == null ? message : builder.ToString();
+        }
+
         private void OnPlayerDied(PlayerLife sender, EDeathCause cause, ELimb limb, CSteamID instigator)
         {
             if (!Configuration.Instance.Enabled) return;
@@ -304,6 +327,7 @@ namespace Emqo.NoNameTag
                 if (victimSteamId != 0)
                 {
                     PlayerStatsService?.RecordPlayerDeath(victimSteamId, resolvedKillerSteamId ?? 0);
+                    RefreshCachedDisplayNames(victimSteamId, resolvedKillerSteamId);
                 }
 
                 BroadcastService?.HandlePlayerDeath(sender, cause, limb, instigator);
@@ -343,8 +367,9 @@ namespace Emqo.NoNameTag
 
                 if (IsAttributionTrackableCause(parameters.cause))
                 {
-                    var weaponName = ResolveWeaponName(parameters, attackerSteamId);
-                    var distanceMeters = ResolveHitDistanceMeters(parameters, attackerSteamId);
+                    var attacker = TryResolvePlayer(attackerSteamId);
+                    var weaponName = ResolveWeaponName(parameters, attacker);
+                    var distanceMeters = ResolveHitDistanceMeters(parameters, attacker);
                     DamageAttributionService?.RecordAttributedHit(attackerSteamId, victimSteamId, parameters.cause, weaponName, distanceMeters);
 
                     var isAlreadyBleeding = victim.life?.isBleeding == true;
@@ -467,9 +492,23 @@ namespace Emqo.NoNameTag
             }
         }
 
-        private static string ResolveWeaponName(DamagePlayerParameters parameters, ulong attackerSteamId)
+        private void RefreshCachedDisplayNames(ulong victimSteamId, ulong? killerSteamId)
         {
-            var attacker = TryResolvePlayer(attackerSteamId);
+            RefreshCachedDisplayName(victimSteamId);
+
+            if (killerSteamId.HasValue && killerSteamId.Value != 0 && killerSteamId.Value != victimSteamId)
+                RefreshCachedDisplayName(killerSteamId.Value);
+        }
+
+        private void RefreshCachedDisplayName(ulong steamId)
+        {
+            var player = TryResolvePlayer(steamId);
+            if (player != null)
+                NameTagManager?.RefreshPlayer(player);
+        }
+
+        private static string ResolveWeaponName(DamagePlayerParameters parameters, UnturnedPlayer attacker)
+        {
             if (attacker?.Player?.equipment?.asset is ItemAsset itemAsset && !string.IsNullOrWhiteSpace(itemAsset.itemName))
             {
                 return itemAsset.itemName;
@@ -478,9 +517,8 @@ namespace Emqo.NoNameTag
             return GetFallbackWeaponName(parameters.cause);
         }
 
-        private static int? ResolveHitDistanceMeters(DamagePlayerParameters parameters, ulong attackerSteamId)
+        private static int? ResolveHitDistanceMeters(DamagePlayerParameters parameters, UnturnedPlayer attacker)
         {
-            var attacker = TryResolvePlayer(attackerSteamId);
             var victim = parameters.player;
             if (attacker?.Player?.transform == null || victim?.transform == null)
             {

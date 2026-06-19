@@ -47,14 +47,19 @@ namespace Emqo.NoNameTag.Utilities
 
         public static string FormatPlayerName(string playerName, ulong steamId, DisplayEffectConfig effect = null)
         {
-            var resolvedEffect = effect ?? CreateDefaultDisplayEffect();
-            var baseName = resolvedEffect != null ? FormatColoredName(playerName, resolvedEffect) : playerName;
+            var baseName = FormatPlayerNameWithoutStats(playerName, effect);
             var statsSuffix = BuildStatsSuffix(steamId);
 
             if (string.IsNullOrEmpty(statsSuffix))
                 return baseName;
 
             return $"{baseName}{statsSuffix}";
+        }
+
+        public static string FormatPlayerNameWithoutStats(string playerName, DisplayEffectConfig effect = null)
+        {
+            var resolvedEffect = effect ?? CreateDefaultDisplayEffect();
+            return resolvedEffect != null ? FormatColoredName(playerName, resolvedEffect) : playerName;
         }
 
         private static DisplayEffectConfig CreateDefaultDisplayEffect()
