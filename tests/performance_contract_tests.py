@@ -191,8 +191,8 @@ def test_ci_and_release_workflows_run_stage1_tests_before_build_or_publish():
     assert "ILRepack.Lib.MSBuild.Task" in read("NoNameTag.csproj")
 
 
-def test_stage2_version_is_1_1_2():
-    assert "<Version>1.1.2</Version>" in read("NoNameTag.csproj")
+def test_stage2_version_is_1_1_3():
+    assert "<Version>1.1.3</Version>" in read("NoNameTag.csproj")
 
 
 def test_stage2_chat_service_and_sender_seam_are_wired():
@@ -216,10 +216,34 @@ def test_stage2_chat_service_and_sender_seam_are_wired():
 def test_stage2_death_attribution_resolved_once_and_shared():
     plugin = read("NoNameTagPlugin.cs")
     body = extract_method(plugin, "OnPlayerDied")
-    assert body.count("DeathAttributionResolver?.Resolve") == 1
-    assert "PlayerStatsService?.RecordPlayerDeath(victimSteamId, attribution.KillerSteamId ?? 0)" in body
-    assert "BroadcastService?.HandlePlayerDeath(sender, cause, limb, instigator, attribution)" in body
-    assert body.count("DamageAttributionService?.ClearVictim(victimSteamId)") == 1
+    resolver_body = extract_method(plugin, "ResolveDeathAttribution")
+    stats_body = extract_method(plugin, "RecordPlayerDeath")
+    broadcast_body = extract_method(plugin, "BroadcastPlayerDeath")
+    clear_body = extract_method(plugin, "ClearDeathAttribution")
+    assert resolver_body.count("DeathAttributionResolver?.Resolve") == 1
+    assert "RecordPlayerDeath(victimSteamId, attribution)" in body
+    assert "PlayerStatsService?.RecordPlayerDeath(victimSteamId, attribution?.KillerSteamId ?? 0)" in stats_body
+    assert "BroadcastPlayerDeath(sender, cause, limb, instigator, attribution)" in body
+    assert "BroadcastService?.HandlePlayerDeath(sender, cause, limb, instigator, attribution ?? DeathAttributionContext.Empty)" in broadcast_body
+    assert "ClearDeathAttribution(victimSteamId)" in body
+    assert clear_body.count("DamageAttributionService?.ClearVictim(victimSteamId)") == 1
+
+
+def test_death_handler_isolates_runtime_null_reference_boundaries():
+    plugin = read("NoNameTagPlugin.cs")
+    body = extract_method(plugin, "OnPlayerDied")
+    assert "TryGetPlayerLifeSteamId(sender)" in body
+    assert "sender?.channel?.owner?.playerID.steamID" not in body
+    for method in [
+        "TryGetPlayerLifeSteamId",
+        "ResolveDeathAttribution",
+        "RecordPlayerDeath",
+        "BroadcastPlayerDeath",
+        "ClearDeathAttribution",
+        "RefreshCachedDisplayName",
+    ]:
+        method_body = extract_method(plugin, method)
+        assert "catch" in method_body, method
 
 
 def test_stage2_death_message_consumes_attribution_context_without_requerying_damage_service():
@@ -228,6 +252,22 @@ def test_stage2_death_message_consumes_attribution_context_without_requerying_da
     assert "TryGetBleedAttribution" not in death_service
     assert "TryGetRecentAttribution" not in death_service
     assert "ResolveKiller(resolvedAttribution" in death_service
+
+
+def test_death_message_does_not_call_unturned_player_from_player_without_runtime_guards():
+    death_service = read("Services/DeathMessageService.cs")
+    handle_body = extract_method(death_service, "HandlePlayerDeath")
+    create_body = extract_method(death_service, "TryCreateUnturnedPlayer")
+    assert "UnturnedPlayer.FromPlayer(sender.player)" not in handle_body
+    assert "var owner = player?.channel?.owner" in create_body
+    assert "owner == null || owner.player == null || owner.playerID == null" in create_body
+    assert "UnturnedPlayer.FromPlayer(player)" in create_body
+
+
+def test_broadcast_helper_handles_clients_with_missing_player_id():
+    helper = read("Services/BroadcastHelper.cs")
+    body = extract_method(helper, "GetSteamPlayer")
+    assert "client?.playerID != null && client.playerID.steamID == steamId" in body
 
 
 def test_litedb_is_merged_into_plugin_release_build():

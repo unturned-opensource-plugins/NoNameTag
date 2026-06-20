@@ -338,34 +338,118 @@ namespace Emqo.NoNameTag
 
         private void OnPlayerDied(PlayerLife sender, EDeathCause cause, ELimb limb, CSteamID instigator)
         {
-            if (!Configuration.Instance.Enabled) return;
+            if (!IsPluginEnabled()) return;
 
             try
             {
-                var victimSteamId = sender?.channel?.owner?.playerID.steamID.m_SteamID ?? 0UL;
-                var attribution = DeathAttributionResolver?.Resolve(new DeathAttributionRequest
+                var victimSteamId = TryGetPlayerLifeSteamId(sender);
+                var attribution = ResolveDeathAttribution(victimSteamId, cause, instigator);
+
+                if (victimSteamId != 0)
+                {
+                    RecordPlayerDeath(victimSteamId, attribution);
+                    RefreshCachedDisplayNames(victimSteamId, attribution.KillerSteamId);
+                }
+
+                BroadcastPlayerDeath(sender, cause, limb, instigator, attribution);
+
+                if (victimSteamId != 0)
+                {
+                    ClearDeathAttribution(victimSteamId);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Exception(ex, $"Error handling player death (cause={cause}, limb={limb}, instigator={instigator.m_SteamID})");
+            }
+        }
+
+        private bool IsPluginEnabled()
+        {
+            try
+            {
+                return Configuration?.Instance?.Enabled == true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static ulong TryGetPlayerLifeSteamId(PlayerLife sender)
+        {
+            if (sender == null)
+                return 0;
+
+            try
+            {
+                var owner = sender.channel?.owner;
+                if (owner == null || owner.playerID == null)
+                    return 0;
+
+                return owner.playerID.steamID.m_SteamID;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        private DeathAttributionContext ResolveDeathAttribution(ulong victimSteamId, EDeathCause cause, CSteamID instigator)
+        {
+            try
+            {
+                return DeathAttributionResolver?.Resolve(new DeathAttributionRequest
                 {
                     VictimSteamId = victimSteamId,
                     InstigatorSteamId = instigator.m_SteamID,
                     Cause = ToDeathAttributionCause(cause)
                 }) ?? DeathAttributionContext.Empty;
-
-                if (victimSteamId != 0)
-                {
-                    PlayerStatsService?.RecordPlayerDeath(victimSteamId, attribution.KillerSteamId ?? 0);
-                    RefreshCachedDisplayNames(victimSteamId, attribution.KillerSteamId);
-                }
-
-                BroadcastService?.HandlePlayerDeath(sender, cause, limb, instigator, attribution);
-
-                if (victimSteamId != 0)
-                {
-                    DamageAttributionService?.ClearVictim(victimSteamId);
-                }
             }
             catch (Exception ex)
             {
-                Logger.Exception(ex, "Error handling player death");
+                Logger.Exception(ex, $"Skipped death attribution resolution (victim={victimSteamId}, cause={cause}, instigator={instigator.m_SteamID})");
+                return new DeathAttributionContext
+                {
+                    VictimSteamId = victimSteamId,
+                    Source = DeathAttributionSource.None
+                };
+            }
+        }
+
+        private void RecordPlayerDeath(ulong victimSteamId, DeathAttributionContext attribution)
+        {
+            try
+            {
+                PlayerStatsService?.RecordPlayerDeath(victimSteamId, attribution?.KillerSteamId ?? 0);
+            }
+            catch (Exception ex)
+            {
+                Logger.Exception(ex, $"Skipped player stats death update (victim={victimSteamId}, killer={attribution?.KillerSteamId ?? 0})");
+            }
+        }
+
+        private void BroadcastPlayerDeath(PlayerLife sender, EDeathCause cause, ELimb limb, CSteamID instigator, DeathAttributionContext attribution)
+        {
+            try
+            {
+                BroadcastService?.HandlePlayerDeath(sender, cause, limb, instigator, attribution ?? DeathAttributionContext.Empty);
+            }
+            catch (Exception ex)
+            {
+                Logger.Exception(ex, $"Skipped death broadcast (cause={cause}, limb={limb}, instigator={instigator.m_SteamID})");
+            }
+        }
+
+        private void ClearDeathAttribution(ulong victimSteamId)
+        {
+            try
+            {
+                DamageAttributionService?.ClearVictim(victimSteamId);
+            }
+            catch (Exception ex)
+            {
+                Logger.Exception(ex, $"Skipped clearing death attribution (victim={victimSteamId})");
             }
         }
 
@@ -481,9 +565,16 @@ namespace Emqo.NoNameTag
 
         private void RefreshCachedDisplayName(ulong steamId)
         {
-            var player = TryResolvePlayer(steamId);
-            if (player != null)
-                NameTagManager?.RefreshPlayer(player);
+            try
+            {
+                var player = TryResolvePlayer(steamId);
+                if (player != null)
+                    NameTagManager?.RefreshPlayer(player);
+            }
+            catch (Exception ex)
+            {
+                Logger.Exception(ex, $"Skipped cached display name refresh (steamId={steamId})");
+            }
         }
 
         private static string ResolveWeaponName(DamagePlayerParameters parameters, UnturnedPlayer attacker)

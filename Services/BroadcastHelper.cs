@@ -26,7 +26,7 @@ namespace Emqo.NoNameTag.Services
         {
             foreach (var client in Provider.clients)
             {
-                if (client.playerID.steamID == steamId)
+                if (client?.playerID != null && client.playerID.steamID == steamId)
                     return client;
             }
             return null;

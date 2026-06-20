@@ -1,11 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
 	  <LangVersion>latest</LangVersion>
 	  <RootNamespace>Emqo.NoNameTag</RootNamespace>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <Version>1.1.2</Version>
+    <Version>1.1.3</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,16 +14,19 @@
     <Compile Remove="参考插件\**" />
     <Compile Remove="artifacts\**" />
     <Compile Remove="tests\**" />
+    <Compile Remove="work\**" />
     <EmbeddedResource Remove="lib\**" />
     <EmbeddedResource Remove="RichMessageAnnouncer-master\**" />
     <EmbeddedResource Remove="参考插件\**" />
     <EmbeddedResource Remove="artifacts\**" />
     <EmbeddedResource Remove="tests\**" />
+    <EmbeddedResource Remove="work\**" />
     <None Remove="lib\**" />
     <None Remove="RichMessageAnnouncer-master\**" />
     <None Remove="参考插件\**" />
     <None Remove="artifacts\**" />
     <None Remove="tests\**" />
+    <None Remove="work\**" />
   </ItemGroup>
 
   <ItemGroup>

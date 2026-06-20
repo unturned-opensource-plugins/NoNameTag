@@ -38,11 +38,9 @@ namespace Emqo.NoNameTag.Services
 
             try
             {
-                if (sender == null || sender.player == null)
+                var victim = TryCreateUnturnedPlayer(sender);
+                if (victim == null)
                     return;
-
-                var victim = UnturnedPlayer.FromPlayer(sender.player);
-                if (victim == null) return;
 
                 var victimSteamId = TryGetSteamId(victim);
                 var resolvedAttribution = attribution ?? CreateDirectAttribution(victimSteamId, instigator);
@@ -56,6 +54,24 @@ namespace Emqo.NoNameTag.Services
             catch (Exception ex)
             {
                 Logger.Exception(ex, "Error handling player death", LogCategory.DeathMessage);
+            }
+        }
+
+        private static UnturnedPlayer TryCreateUnturnedPlayer(PlayerLife sender)
+        {
+            try
+            {
+                var player = sender?.player;
+                var owner = player?.channel?.owner;
+                if (owner == null || owner.player == null || owner.playerID == null)
+                    return null;
+
+                return UnturnedPlayer.FromPlayer(player);
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Could not resolve death victim: {ex.Message}", LogCategory.DeathMessage);
+                return null;
             }
         }
 

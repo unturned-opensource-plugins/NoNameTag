@@ -70,3 +70,6 @@ CLAUDE.md
 ############################
 __pycache__/
 .pytest_cache/
+
+# Local reverse-engineering / deployment scratch
+work/
