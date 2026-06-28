@@ -76,7 +76,20 @@ def test_chat_sender_steam_player_is_cached_per_message():
     chatted_body = extract_method(plugin, "OnPlayerChatted")
     assert "player.SteamPlayer()" not in chatted_body
     assert "RuntimeSteamPlayer" not in plugin
-    assert "BroadcastHelper.GetSteamPlayer(new CSteamID(dispatch.Sender.SteamId))" in runtime_sender
+    assert "BroadcastHelper.GetSteamPlayer(new CSteamID(dispatch.Sender.SteamId))" not in runtime_sender
+
+
+def test_runtime_chat_sender_uses_server_sender_slot_for_replayed_chat():
+    runtime_sender = read("Services/RuntimeChatMessageSender.cs")
+    send_body = extract_method(runtime_sender, "Send")
+    assert "dispatch.Recipient == null" in send_body
+    assert "EChatMode.GLOBAL" in send_body
+    assert "EChatMode.SAY" in send_body
+    assert "ChatManager.serverSendMessage(" in send_body
+    assert "Color.white,\n                null,\n                recipient," in send_body
+    assert "ToRuntimeMode" not in runtime_sender
+    assert "GetSteamPlayer(new CSteamID(dispatch.Sender.SteamId))" not in runtime_sender
+    assert "dispatch.Recipient?.SteamId > 0 && recipient == null" in send_body
 
 
 def test_formatted_name_cache_cleanup_includes_formatted_only_entries():
@@ -191,8 +204,8 @@ def test_ci_and_release_workflows_run_stage1_tests_before_build_or_publish():
     assert "ILRepack.Lib.MSBuild.Task" in read("NoNameTag.csproj")
 
 
-def test_stage2_version_is_1_1_3():
-    assert "<Version>1.1.3</Version>" in read("NoNameTag.csproj")
+def test_stage2_version_is_1_1_4():
+    assert "<Version>1.1.4</Version>" in read("NoNameTag.csproj")
 
 
 def test_stage2_chat_service_and_sender_seam_are_wired():

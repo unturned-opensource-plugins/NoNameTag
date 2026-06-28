@@ -12,36 +12,25 @@ namespace Emqo.NoNameTag.Services
             if (dispatch == null || string.IsNullOrEmpty(dispatch.Message))
                 return;
 
-            var sender = dispatch.Sender?.SteamId > 0
-                ? BroadcastHelper.GetSteamPlayer(new CSteamID(dispatch.Sender.SteamId))
-                : null;
             var recipient = dispatch.Recipient?.SteamId > 0
                 ? BroadcastHelper.GetSteamPlayer(new CSteamID(dispatch.Recipient.SteamId))
                 : null;
 
+            if (dispatch.Recipient?.SteamId > 0 && recipient == null)
+                return;
+
+            var runtimeMode = dispatch.Recipient == null
+                ? EChatMode.GLOBAL
+                : EChatMode.SAY;
+
             ChatManager.serverSendMessage(
                 dispatch.Message,
                 Color.white,
-                sender,
+                null,
                 recipient,
-                ToRuntimeMode(dispatch.ChatMode),
+                runtimeMode,
                 dispatch.AvatarUrl,
                 true);
-        }
-
-        private static EChatMode ToRuntimeMode(ChatMessageMode mode)
-        {
-            switch (mode)
-            {
-                case ChatMessageMode.Local:
-                    return EChatMode.LOCAL;
-                case ChatMessageMode.Group:
-                    return EChatMode.GROUP;
-                case ChatMessageMode.Say:
-                    return EChatMode.SAY;
-                default:
-                    return EChatMode.GLOBAL;
-            }
         }
     }
 }
